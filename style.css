@@ -1,23 +1,81 @@
-:root {
-  --bg: #0b0d10;
-  --panel: #11151a;
-  --muted: #9aa4af;
-  --text: #e5e7eb;
-  --accent: #4f46e5;
-  --accent-light: #6366f1;
-  --danger: #dc2626;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --border: #1f2937;
-  --border-light: #374151;
+/**
+ * CID Generator Tool - CSS Design System
+ *
+ * Dark theme professional design system for URL generation tool
+ * Implements accessibility standards (WCAG 2.1 AA), responsive design,
+ * and modern CSS techniques for optimal user experience.
+ *
+ * Features:
+ * - CSS custom properties for consistent theming
+ * - Responsive grid layouts and mobile-first design
+ * - Accessibility-focused focus states and color contrast
+ * - Loading states and micro-interactions
+ * - Print-friendly styles and reduced motion support
+ *
+ * @author CID Generator Tool
+ * @version 1.0.0
+ */
 
-  /* Accessibility colors */
-  --focus-ring: #60a5fa;
-  --error: #fca5a5;
-  --high-contrast: #ffffff;
+/**
+ * CSS Custom Properties (Design Tokens)
+ *
+ * Centralized design system tokens for consistent theming
+ * across all components. These variables enable easy theme
+ * customization and maintenance.
+ *
+ * Color Palette:
+ * - Background colors: Dark blue-gray theme
+ * - Text colors: High contrast for readability
+ * - Accent colors: Purple-blue gradient system
+ * - Status colors: Success, warning, error indicators
+ * - Border colors: Subtle separation with hierarchy
+ * - Accessibility colors: Focus rings and high contrast support
+ */
+:root {
+  /* Core background colors - Dark theme foundation */
+  --bg: #0b0d10;              /* Main app background - deepest dark */
+  --panel: #11151a;           /* Panel/card backgrounds - raised surfaces */
+
+  /* Text and content colors - WCAG AA compliant contrast */
+  --muted: #9aa4af;           /* Secondary text, labels, disabled states */
+  --text: #e5e7eb;            /* Primary text - high contrast white */
+
+  /* Brand and interaction colors - Purple-blue system */
+  --accent: #4f46e5;          /* Primary accent - buttons, links, active states */
+  --accent-light: #6366f1;    /* Light accent - gradients, hover states */
+
+  /* Status and feedback colors - Standard semantic palette */
+  --danger: #dc2626;          /* Error states, destructive actions */
+  --success: #10b981;         /* Success states, confirmations */
+  --warning: #f59e0b;         /* Warning states, cautions */
+
+  /* Border and separation colors - Subtle hierarchy */
+  --border: #1f2937;          /* Default borders, separators */
+  --border-light: #374151;    /* Hover borders, emphasized separators */
+
+  /* Accessibility colors - Focus and high contrast support */
+  --focus-ring: #60a5fa;      /* Focus ring color - blue for visibility */
+  --error: #fca5a5;           /* Error text color - lighter red for readability */
+  --high-contrast: #ffffff;   /* High contrast mode override */
 }
 
-/* Screen reader only content */
+/**
+ * Accessibility Utilities
+ *
+ * Screen reader and keyboard navigation support following
+ * WCAG 2.1 AA guidelines for inclusive design.
+ */
+
+/**
+ * Screen Reader Only Content
+ *
+ * Hides content visually while keeping it available to screen readers.
+ * Uses clip-path technique for better browser compatibility than
+ * display:none which removes content from accessibility tree.
+ *
+ * Usage: Apply to labels, descriptions, and instructions that provide
+ * context for screen readers but aren't needed visually.
+ */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -30,35 +88,87 @@
   border: 0;
 }
 
-/* Skip to content link */
+/**
+ * Skip to Main Content Link
+ *
+ * Accessibility feature that allows keyboard users to bypass
+ * navigation and jump directly to main content. Hidden by default,
+ * becomes visible when focused.
+ *
+ * Positioned off-screen until focused, then slides into view
+ * at top-left corner. Essential for keyboard navigation efficiency.
+ */
 .skip-link {
   position: absolute;
-  top: -40px;
+  top: -40px;              /* Hidden above viewport */
   left: 6px;
   background: var(--accent);
   color: white;
   padding: 8px;
   text-decoration: none;
   border-radius: 4px;
-  z-index: 1000;
+  z-index: 1000;          /* Above all other content */
 }
 
+/**
+ * Skip Link Focus State
+ *
+ * Reveals the skip link when focused via keyboard navigation.
+ * Smooth transition into visible area for better UX.
+ */
 .skip-link:focus {
-  top: 6px;
+  top: 6px;               /* Slides into view on focus */
 }
 
+/**
+ * Global Styles and Layout Foundation
+ *
+ * Base styles that apply to all elements and establish
+ * the overall layout structure of the application.
+ */
+
+/**
+ * Universal Box Model
+ *
+ * Applies border-box sizing to all elements for predictable
+ * layout calculations. Includes pseudo-elements for consistency.
+ */
 * {
   box-sizing: border-box;
 }
 
+/**
+ * Body Element - Application Foundation
+ *
+ * Sets up the base typography, color scheme, and removes default
+ * browser margins. Uses system font stack for native feel across platforms.
+ *
+ * Font Stack Priority:
+ * 1. SF Pro Display (macOS/iOS)
+ * 2. System UI (native system fonts)
+ * 3. Segoe UI (Windows)
+ * 4. Roboto (Android)
+ * 5. Common fallbacks
+ */
 body {
   margin: 0;
   font-family: 'SF Pro Display', system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.6;
+  line-height: 1.6;        /* Optimal reading line height */
 }
 
+/**
+ * Application Header
+ *
+ * Sticky header with gradient background and glassmorphism effect.
+ * Contains app title and primary action buttons. Stays fixed at top
+ * during scrolling for consistent access to main controls.
+ *
+ * Layout: Flexbox with space-between for title and actions
+ * Visual: Gradient background with backdrop blur for depth
+ * Behavior: Sticky positioning with high z-index for layering
+ */
 header {
   display: flex;
   justify-content: space-between;
@@ -66,34 +176,65 @@ header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
   background: linear-gradient(135deg, var(--panel) 0%, #0f1419 100%);
-  position: sticky;
+  position: sticky;         /* Stays at top when scrolling */
   top: 0;
-  z-index: 100;
-  backdrop-filter: blur(8px);
+  z-index: 100;           /* Above main content, below modals */
+  backdrop-filter: blur(8px); /* Glassmorphism effect */
 }
 
+/**
+ * Main Heading - Application Title
+ *
+ * Large, gradient-filled text that serves as the app branding.
+ * Uses CSS gradient with background-clip for colorful text effect.
+ * Webkit prefixes ensure compatibility across browsers.
+ */
 h1 {
   font-size: 24px;
   font-weight: 700;
-  margin: 0;
+  margin: 0 0 4px 0;
+  /* Gradient text effect - purple to blue */
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
+.subtitle {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+  font-weight: 400;
+}
+
+/**
+ * Header Actions Container
+ *
+ * Flexbox container for header buttons (Save, Load, Reset).
+ * Provides consistent spacing between action buttons.
+ */
 .actions {
   display: flex;
   gap: 8px;
 }
 
+/**
+ * Main Content Grid Layout
+ *
+ * Three-column CSS Grid layout that adapts to content needs.
+ * Left column (1.2fr) for forms and data entry.
+ * Center and right columns (1fr each) for supporting content.
+ *
+ * Responsive: Collapses to fewer columns on smaller screens.
+ * Centered: Max-width with auto margins for content focus.
+ */
 main {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr 1fr; /* Asymmetric layout */
   gap: 16px;
   padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: 1400px;      /* Prevents over-wide layouts */
+  margin: 0 auto;         /* Centers content horizontally */
 }
 
 .tabs {
@@ -175,6 +316,13 @@ h2 {
   gap: 8px;
 }
 
+h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--text);
+}
+
 .row {
   display: flex;
   gap: 12px;
@@ -226,7 +374,16 @@ input:focus, select:focus, textarea:focus, button:focus {
   }
 }
 
-/* Reduced motion preferences */
+/**
+ * Accessibility - Reduced Motion Support
+ *
+ * Respects user's motion preferences for vestibular disorders
+ * and motion sensitivity. Disables animations and transitions
+ * when user has set prefers-reduced-motion: reduce.
+ *
+ * This is a WCAG 2.1 requirement for accessibility compliance.
+ * Applies to all elements including pseudo-elements.
+ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -301,12 +458,176 @@ textarea#impKws {
   font-family: inherit;
 }
 
-.table-controls {
+/* New section-based layout styles */
+.form-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 19, 24, 0.5);
+}
+
+.section-header {
   display: flex;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.data-actions {
+  display: flex;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+}
+
+.data-management {
+  display: flex;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.action-row {
+  align-items: center;
+  gap: 16px;
+}
+
+.results-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.results-content {
+  margin-top: 16px;
+}
+
+/* Collapsible sections */
+.cid-reference, .advanced-options {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 19, 24, 0.3);
+}
+
+.cid-reference summary, .advanced-options summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--accent);
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.cid-reference summary:hover, .advanced-options summary:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.cid-reference[open] summary, .advanced-options[open] summary {
+  border-bottom: 1px solid var(--border);
+  border-radius: 8px 8px 0 0;
+}
+
+.help-section, .template-section {
+  padding: 16px;
+}
+
+.cid-examples {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.cid-examples li {
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: #0f1318;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+/* Dropdown menu styles */
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 160px;
+  background: var(--panel);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+  padding: 8px 0;
+}
+
+.dropdown-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-menu button:hover {
+  background: var(--accent);
+  color: white;
+  transform: none;
+}
+
+.dropdown-menu hr {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* Button size variants */
+button.large {
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+button.secondary {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border-color: var(--border-light);
+}
+
+button.secondary:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
 }
 
 .table-wrap {
@@ -401,22 +722,6 @@ footer {
   background: var(--panel);
 }
 
-/* CID Library Styles */
-.cid-library {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.cid-item {
-  padding: 12px;
-  background: #0f1318;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-}
-
 .help-text {
   font-size: 12px;
   color: var(--muted);
@@ -424,7 +729,20 @@ footer {
   font-style: italic;
 }
 
-/* URL composition highlighting */
+/**
+ * URL Composition Visualization
+ *
+ * Syntax-highlighted display of generated URLs to help users
+ * understand the structure and parameter relationships.
+ * Uses color coding to differentiate URL segments.
+ */
+
+/**
+ * URL Preview Container
+ *
+ * Houses the URL composition display with consistent panel styling.
+ * Provides context and structure for the syntax-highlighted URL.
+ */
 .url-preview {
   margin: 16px 0;
   padding: 16px;
@@ -433,50 +751,81 @@ footer {
   border-radius: 8px;
 }
 
+/**
+ * URL Preview Heading
+ *
+ * Consistent typography for the preview section title.
+ * Smaller size to maintain hierarchy within panels.
+ */
 .url-preview h3 {
   margin: 0 0 12px 0;
   font-size: 14px;
   color: var(--text);
 }
 
+/**
+ * Composed URL Display
+ *
+ * Monospace container for syntax-highlighted URL segments.
+ * Black background provides contrast for colored segments.
+ * Horizontal scrolling for long URLs on small screens.
+ */
 .comp-url {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #000;
-  overflow: auto;
+  background: #000;              /* Pure black for contrast */
+  overflow: auto;               /* Horizontal scroll if needed */
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   margin-bottom: 12px;
 }
 
+/**
+ * URL Segment Base Style
+ *
+ * Common styling for all URL segments before color application.
+ * Small padding and border radius for subtle highlighting.
+ */
 .seg {
   padding: 2px 4px;
   border-radius: 4px;
 }
 
+/**
+ * URL Segment Color Coding
+ *
+ * Each segment type has distinct colors to show URL structure:
+ * - const: Static URL parts (gray) - protocol, paths, parameters
+ * - brand: Business name (blue) - the 'q' parameter
+ * - keyword: Search terms (green) - the 'oq' parameter
+ * - cidloc: Location CID (orange) - the 'rldimm' parameter
+ * - cidgmb: GMB CID (purple) - the 'si' parameter
+ *
+ * Colors chosen for sufficient contrast against black background.
+ */
 .seg-const {
   background: #0e1319;
   color: #6b7280;
 }
 
 .seg-brand {
-  background: #1e3a8a;
+  background: #1e3a8a;          /* Blue for brand/business */
   color: #dbeafe;
 }
 
 .seg-keyword {
-  background: #065f46;
+  background: #065f46;          /* Green for keywords/search */
   color: #d1fae5;
 }
 
 .seg-cidloc {
-  background: #7c2d12;
+  background: #7c2d12;          /* Orange for location CID */
   color: #ffedd5;
 }
 
 .seg-cidgmb {
-  background: #6b21a8;
+  background: #6b21a8;          /* Purple for GMB CID */
   color: #ede9fe;
 }
 
@@ -637,85 +986,142 @@ footer {
   border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-/* Enhanced responsive design */
+/**
+ * Responsive Design - Mobile-First Approach
+ *
+ * Progressive enhancement breakpoints that adapt the layout
+ * for different screen sizes. Follows mobile-first principles
+ * with desktop enhancements.
+ *
+ * Breakpoint Strategy:
+ * - 1200px: Large desktop to tablet transition
+ * - 800px: Tablet to mobile transition
+ * - 480px: Small mobile optimization
+ */
+
+/**
+ * Large Desktop to Tablet (≤1200px)
+ *
+ * Reduces grid columns from 3 to 2 for better space utilization.
+ * Stacks form elements vertically for improved usability.
+ */
 @media (max-width: 1200px) {
   main {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr;    /* 3-col to 2-col layout */
   }
 
   .form-row {
-    flex-direction: column;
+    flex-direction: column;            /* Stack form elements */
   }
 
   .form-row > * {
-    min-width: 100%;
+    min-width: 100%;                  /* Full width form inputs */
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .data-actions {
+    justify-content: center;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
+/**
+ * Tablet to Mobile (≤800px)
+ *
+ * Single column layout for maximum focus and readability.
+ * Enhanced touch targets and improved mobile interactions.
+ */
 @media (max-width: 800px) {
   main {
-    grid-template-columns: 1fr;
-    padding: 12px;
+    grid-template-columns: 1fr;       /* Single column layout */
+    padding: 12px;                    /* Reduced padding for mobile */
     gap: 12px;
   }
 
   .row {
-    flex-direction: column;
+    flex-direction: column;           /* Stack all row elements */
     align-items: stretch;
     gap: 8px;
   }
 
   .lbl input {
-    width: 100%;
+    width: 100%;                      /* Full width inputs */
   }
 
   .actions {
-    flex-direction: column;
+    flex-direction: column;           /* Stack header buttons */
     gap: 8px;
   }
 
-  .table-controls {
-    flex-direction: column;
+  .data-actions {
+    flex-direction: column;           /* Stack data controls */
     align-items: stretch;
   }
 
-  .table-controls button {
-    width: 100%;
+  .data-actions button, .results-actions button {
+    width: 100%;                      /* Full width buttons */
+  }
+
+  .data-management {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding-left: 0;
+    padding-top: 12px;
+    margin-top: 12px;
   }
 
   .legend {
-    flex-direction: column;
+    flex-direction: column;           /* Stack legend items */
     gap: 8px;
   }
 
-  /* Improved touch targets */
+  /**
+   * Touch Target Accessibility
+   *
+   * Ensures minimum 44px touch targets as per WCAG guidelines.
+   * Critical for mobile usability and accessibility compliance.
+   */
   button, input, select, textarea {
-    min-height: 44px;
+    min-height: 44px;                /* WCAG minimum touch target */
   }
 
   .tab {
-    padding: 16px 20px;
+    padding: 16px 20px;              /* Larger tab touch areas */
   }
 }
 
+/**
+ * Small Mobile Optimization (≤480px)
+ *
+ * Ultra-compact layout for small screens with focus on
+ * essential functionality and simplified navigation.
+ */
 @media (max-width: 480px) {
   header {
-    flex-direction: column;
+    flex-direction: column;           /* Stack header elements */
     gap: 12px;
     align-items: stretch;
   }
 
   .actions {
-    justify-content: center;
+    justify-content: center;          /* Center action buttons */
   }
 
   h1 {
-    text-align: center;
-    font-size: 20px;
+    text-align: center;               /* Center app title */
+    font-size: 20px;                 /* Smaller title on mobile */
   }
 
   .panel {
-    padding: 16px;
+    padding: 16px;                   /* Reduced panel padding */
   }
 }
 

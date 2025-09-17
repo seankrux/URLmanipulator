@@ -1,146 +1,204 @@
+<!--
+/**
+ * CID Generator Tool - HTML Document Structure
+ *
+ * Professional URL generation tool for Google My Business and local SEO.
+ * Implements modern web standards, accessibility guidelines (WCAG 2.1 AA),
+ * and semantic HTML5 structure.
+ *
+ * Key Features:
+ * - Semantic HTML5 markup with proper landmarks
+ * - Comprehensive ARIA support for screen readers
+ * - Progressive enhancement with JavaScript
+ * - Mobile-first responsive design
+ * - Keyboard navigation support
+ * - Form validation and user feedback
+ *
+ * Architecture:
+ * - Client-side only (no server required)
+ * - Local storage for data persistence
+ * - Google Places API integration
+ * - CSV import/export functionality
+ * - Real-time URL generation and preview
+ *
+ * @author CID Generator Tool
+ * @version 1.0.0
+ * @license MIT
+ */
+-->
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Document metadata and optimization -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Generate CID-based Google Search URLs for local SEO and location targeting" />
+
+    <!-- Page title optimized for SEO and clarity -->
     <title>CID Generator Tool - Local SEO URL Builder</title>
+
+    <!-- Stylesheet loading with performance optimization -->
     <link rel="stylesheet" href="style.css" />
     <link rel="preload" href="style.css" as="style" />
   </head>
   <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     <header role="banner">
       <h1 id="main-title">CID Generator Tool</h1>
-      <div class="actions" role="toolbar" aria-label="Data management actions">
-        <button id="saveAll" aria-describedby="save-help" title="Save current data to browser storage">Save</button>
-        <button id="loadAll" aria-describedby="load-help" title="Load previously saved data">Load</button>
-        <button id="resetAll" class="danger" aria-describedby="reset-help" title="Clear all data and reset to defaults">Reset</button>
-      </div>
-      <div class="sr-only" id="save-help">Saves your current keywords, CIDs, and settings to browser localStorage</div>
-      <div class="sr-only" id="load-help">Restores previously saved data from browser localStorage</div>
-      <div class="sr-only" id="reset-help">Warning: This will permanently delete all current data</div>
+      <p class="subtitle">Generate targeted Google Search URLs for local SEO</p>
     </header>
 
-    <main>
+    <main id="main-content">
       <nav class="tabs" role="tablist" aria-label="Main navigation">
         <button id="viewInput" class="tab active" role="tab" aria-selected="true" aria-controls="input-panels" tabindex="0">Input & Setup</button>
         <button id="viewCid" class="tab" role="tab" aria-selected="false" aria-controls="results-panel" tabindex="-1">CID Search Results</button>
       </nav>
 
-      <!-- Bulk Import Panel -->
-      <section class="panel" role="region" aria-labelledby="bulk-import-heading">
-        <h2 id="bulk-import-heading"><span aria-hidden="true">🚀</span> Bulk Keyword Import</h2>
-        <div class="row">
-          <label class="lbl" for="impBrand">GMB Brand Name
-            <input id="impBrand" aria-describedby="brand-help" placeholder="e.g. Chicago Roofing Services Inc" required />
-            <div class="sr-only" id="brand-help">Enter your Google My Business listing name exactly as it appears</div>
-          </label>
-          <label class="lbl" for="impCidGmb">GMB CID (Column E)
-            <input id="impCidGmb" aria-describedby="gmb-cid-help" placeholder="e.g. 8071969139480942171" pattern="\d{10,20}" required />
-            <div class="sr-only" id="gmb-cid-help">20-digit Customer ID from your Google My Business listing URL</div>
-          </label>
+      <!-- Input & Setup Panel -->
+      <section class="panel" role="region" aria-labelledby="input-setup-heading">
+        <h2 id="input-setup-heading"><span aria-hidden="true">📋</span> Input & Setup</h2>
+
+        <!-- Bulk Import Section -->
+        <div class="form-section">
+          <h3>Bulk Keyword Import</h3>
+          <div class="row">
+            <label class="lbl" for="impBrand">GMB Brand Name
+              <input id="impBrand" aria-describedby="brand-help" placeholder="e.g. Chicago Roofing Services Inc" required />
+              <div class="sr-only" id="brand-help">Enter your Google My Business listing name exactly as it appears</div>
+            </label>
+            <label class="lbl" for="impCidGmb">GMB CID
+              <input id="impCidGmb" aria-describedby="gmb-cid-help" placeholder="e.g. 8071969139480942171" pattern="\d{10,20}" required />
+              <div class="sr-only" id="gmb-cid-help">20-digit Customer ID from your Google My Business listing URL</div>
+            </label>
+          </div>
+          <div class="row">
+            <label class="lbl" for="impCidLoc">Location CID
+              <input id="impCidLoc" aria-describedby="loc-cid-help" placeholder="e.g. 12673312613543755776" pattern="\d{10,20}" required />
+              <div class="sr-only" id="loc-cid-help">Geographic location identifier for targeting specific areas</div>
+            </label>
+            <label class="lbl" for="impLocation">Location Name
+              <input id="impLocation" aria-describedby="location-help" placeholder="e.g. Chicago, IL" />
+              <div class="sr-only" id="location-help">Human-readable location name for reference</div>
+            </label>
+          </div>
+          <div class="row">
+            <label class="lbl keyword-input" for="impKws">Search Keywords (one per line)
+              <textarea id="impKws" aria-describedby="keywords-help" placeholder="e.g.&#10;chicago roofers&#10;roof repair chicago&#10;roofing contractors near me" rows="6" required></textarea>
+              <div class="sr-only" id="keywords-help">Enter one search keyword or phrase per line. These will be used to generate targeted URLs</div>
+            </label>
+          </div>
+          <div class="row small">
+            <span id="kwCount">URLs to generate: 0</span>
+          </div>
+          <div class="row action-row">
+            <select id="impMode" aria-describedby="mode-help" title="How to insert rows">
+              <option value="append">Append to existing</option>
+              <option value="replace">Replace all data</option>
+            </select>
+            <button id="impInsert" class="primary large" aria-describedby="generate-help">Generate CID URLs</button>
+            <div class="sr-only" id="mode-help">Choose whether to add to existing data or replace it entirely</div>
+            <div class="sr-only" id="generate-help">Creates URLs using the provided keywords and CID information</div>
+          </div>
         </div>
-        <div class="row">
-          <label class="lbl" for="impCidLoc">Location CID (Column D)
-            <input id="impCidLoc" aria-describedby="loc-cid-help" placeholder="e.g. 12673312613543755776" pattern="\d{10,20}" required />
-            <div class="sr-only" id="loc-cid-help">Geographic location identifier for targeting specific areas</div>
-          </label>
-          <label class="lbl" for="impLocation">Location Name
-            <input id="impLocation" aria-describedby="location-help" placeholder="e.g. Chicago, IL" />
-            <div class="sr-only" id="location-help">Human-readable location name for reference</div>
-          </label>
-        </div>
-        <div class="row">
-          <label class="lbl keyword-input" for="impKws">Original Search Keywords (Column A - one per line)
-            <textarea id="impKws" aria-describedby="keywords-help" placeholder="e.g.&#10;chicago roofers&#10;roof repair chicago&#10;roofing contractors near me" rows="6" required></textarea>
-            <div class="sr-only" id="keywords-help">Enter one search keyword or phrase per line. These will be used to generate targeted URLs</div>
-          </label>
-        </div>
-        <div class="row small">
-          <span id="kwCount">URLs to generate: 0</span>
-        </div>
-        <div class="row">
-          <label for="impMode" class="sr-only">Import mode</label>
-          <select id="impMode" aria-describedby="mode-help" title="How to insert rows">
-            <option value="append">Append to existing</option>
-            <option value="replace">Replace all data</option>
-          </select>
-          <div class="sr-only" id="mode-help">Choose whether to add to existing data or replace it entirely</div>
-          <button id="impInsert" class="primary" aria-describedby="generate-help">Generate CID URLs</button>
-          <div class="sr-only" id="generate-help">Creates URLs using the provided keywords and CID information</div>
+
+        <!-- CID Quick Reference (Collapsible) -->
+        <details class="cid-reference">
+          <summary>CID Quick Reference</summary>
+          <div class="help-section">
+            <p><strong>Common Location CIDs:</strong></p>
+            <ul class="cid-examples">
+              <li><strong>Chicago Downtown:</strong> 12673312613543755776</li>
+              <li><strong>Chicago North Side:</strong> 15234567890123456789</li>
+              <li><strong>Chicago South Side:</strong> 98765432109876543210</li>
+            </ul>
+            <p class="help-text">💡 CIDs are 10-20 digit numbers found in Google My Business URLs</p>
+          </div>
+        </details>
+
+        <!-- Data Management Section -->
+        <div class="form-section">
+          <div class="section-header">
+            <h3>Generated Data</h3>
+            <div class="data-actions">
+              <button id="addRow">Add Row</button>
+              <button id="clearRows" class="danger">Clear All</button>
+              <div class="dropdown-container">
+                <button id="exportDropdown" class="secondary">Export ▼</button>
+                <div class="dropdown-menu" id="exportMenu">
+                  <button onclick="exportData('urls-txt')">URLs Only (TXT)</button>
+                  <button onclick="exportData('urls-csv')">URLs Only (CSV)</button>
+                  <button onclick="exportData('full-csv')">Full Data (CSV)</button>
+                  <hr>
+                  <button onclick="document.getElementById('csvImport').click()">Import CSV</button>
+                </div>
+              </div>
+              <input type="file" id="csvImport" accept=".csv,text/csv" style="display:none" />
+              <div class="data-management">
+                <button id="saveAll" title="Save current data to browser storage">Save</button>
+                <button id="loadAll" title="Load previously saved data">Load</button>
+                <button id="resetAll" class="danger" title="Clear all data and reset to defaults">Reset</button>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="dataTable"></table>
+          </div>
         </div>
       </section>
 
-      <!-- CID Management Panel -->
-      <section class="panel">
-        <h2>📍 CID Location Library</h2>
-        <div class="cid-library">
-          <div class="cid-item">
-            <strong>Chicago Downtown:</strong> 12673312613543755776
-          </div>
-          <div class="cid-item">
-            <strong>Chicago North Side:</strong> 15234567890123456789
-          </div>
-          <div class="cid-item">
-            <strong>Chicago South Side:</strong> 98765432109876543210
-          </div>
-          <p class="help-text">💡 Use these location CIDs for different neighborhoods in your area</p>
-        </div>
-      </section>
 
-      <!-- Data Table Panel -->
-      <section class="panel">
-        <h2>📊 Generated Data</h2>
-        <div class="table-controls">
-          <button id="addRow">Add Row</button>
-          <button id="clearRows" class="danger">Clear All</button>
-          <button id="csvExport">Export CSV</button>
-          <input type="file" id="csvImport" accept=".csv,text/csv" style="display:none" />
-          <button onclick="document.getElementById('csvImport').click()">Import CSV</button>
-        </div>
-        <div class="table-wrap">
-          <table id="dataTable"></table>
-        </div>
-      </section>
-
-      <!-- CID Search Results Panel -->
+      <!-- Results Panel -->
       <section class="panel" id="urlsPanel">
-        <h2>🎯 CID Search Results <span id="urlsCount" class="tiny"></span></h2>
-        <div class="row">
-          <button id="urlsRefresh">Refresh</button>
-          <button id="urlsCopy" class="primary">Copy All URLs</button>
-          <button id="urlsCsv">Download CSV</button>
-          <button id="urlsTxt">Download TXT</button>
+        <div class="panel-header">
+          <h2>🎯 Results <span id="urlsCount" class="tiny"></span></h2>
+          <div class="results-actions">
+            <button id="urlsCopy" class="primary">Copy URLs</button>
+            <div class="dropdown-container">
+              <button id="resultsExportDropdown" class="secondary">Export ▼</button>
+              <div class="dropdown-menu" id="resultsExportMenu">
+                <button onclick="downloadUrls('txt')">Download TXT</button>
+                <button onclick="downloadUrls('csv')">Download CSV</button>
+              </div>
+            </div>
+          </div>
         </div>
+
         <div class="url-preview">
           <h3>URL Structure Preview:</h3>
           <div id="compositionUrl" class="comp-url"></div>
           <div class="legend">
-            <span class="chip"><span class="swatch seg-brand"></span> q = Brand (lowercase + spaces)</span>
-            <span class="chip"><span class="swatch seg-keyword"></span> oq = Original Search</span>
+            <span class="chip"><span class="swatch seg-brand"></span> q = Brand</span>
+            <span class="chip"><span class="swatch seg-keyword"></span> oq = Search Terms</span>
             <span class="chip"><span class="swatch seg-cidloc"></span> rldimm = Location CID</span>
             <span class="chip"><span class="swatch seg-cidgmb"></span> si = GMB CID</span>
           </div>
         </div>
-        <ol id="urlList"></ol>
+
+        <div class="results-content">
+          <ol id="urlList"></ol>
+        </div>
+
+        <!-- Advanced Options (Collapsible) -->
+        <details class="advanced-options">
+          <summary>Advanced Output Formatting</summary>
+          <div class="template-section">
+            <div class="row">
+              <select id="tplPresets" title="Load a preset template">
+                <option value="">Select a preset...</option>
+              </select>
+              <button id="loadPreset">Load Preset</button>
+            </div>
+            <label for="template">Custom Template:</label>
+            <textarea id="template" placeholder="Template: {{FinalUrl}}">{{FinalUrl}}</textarea>
+            <div class="row">
+              <button id="generate">Generate Output</button>
+              <button id="copyAll">Copy Formatted Results</button>
+            </div>
+            <ol id="outputs"></ol>
+          </div>
+        </details>
       </section>
 
-      <!-- Template Section -->
-      <section class="panel">
-        <h2>🔧 Output Template</h2>
-        <div class="row">
-          <select id="tplPresets" title="Load a preset template">
-            <option value="">Select a preset...</option>
-          </select>
-          <button id="loadPreset">Load Preset</button>
-        </div>
-        <textarea id="template" placeholder="Template: {{FinalUrl}}">{{FinalUrl}}</textarea>
-        <div class="row">
-          <button id="generate">Generate Output</button>
-          <button id="copyAll">Copy All Results</button>
-        </div>
-        <ol id="outputs"></ol>
-      </section>
     </main>
 
     <footer>
