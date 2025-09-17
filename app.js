@@ -1,6 +1,7 @@
 // Storage and Configuration
-const STORAGE_KEY = "cid-generator-v1";
-const GOOGLE_API_KEY = "AIzaSyD4Njem--rFlGOjQ-h-fST7efu3lAtFzKM";
+const STORAGE_KEY = 'cid-generator-v1';
+const GOOGLE_API_KEY_STORAGE = 'cid-generator-google-api';
+let googleApiKey = '';
 
 /**
  * Persists the current application state to browser localStorage
@@ -81,6 +82,170 @@ function resetAll() {
   state.columns = defaultColumns();
   state.rows = [];
   state.template = '{{FinalUrl}}';
+}
+
+// Google Places API configuration management
+
+function chromeStorageAvailable() {
+  try {
+    return typeof chrome !== 'undefined' && !!chrome.storage?.sync;
+  } catch {
+    return false;
+  }
+}
+
+function setGoogleApiKey(value) {
+  googleApiKey = String(value || '').trim();
+}
+
+function getGoogleApiKey() {
+  if (googleApiKey) return googleApiKey;
+  const fallback = window.cidAppConfig?.googleApiKey;
+  if (fallback) setGoogleApiKey(fallback);
+  return googleApiKey;
+}
+
+function loadGoogleApiKeyFromStorage() {
+  return new Promise((resolve) => {
+    const fallback = () => {
+      try {
+        const localValue = localStorage.getItem(GOOGLE_API_KEY_STORAGE) || '';
+        resolve(localValue.trim());
+      } catch {
+        resolve('');
+      }
+    };
+
+    if (!chromeStorageAvailable()) {
+      fallback();
+      return;
+    }
+
+    try {
+      chrome.storage.sync.get([GOOGLE_API_KEY_STORAGE], (items) => {
+        if (chrome.runtime?.lastError) {
+          fallback();
+          return;
+        }
+
+        const value = items?.[GOOGLE_API_KEY_STORAGE];
+        if (typeof value === 'string' && value.trim()) resolve(value.trim());
+        else fallback();
+      });
+    } catch {
+      fallback();
+    }
+  });
+}
+
+function persistGoogleApiKey(value) {
+  const sanitized = String(value || '').trim();
+  setGoogleApiKey(sanitized);
+
+  try {
+    if (sanitized) localStorage.setItem(GOOGLE_API_KEY_STORAGE, sanitized);
+    else localStorage.removeItem(GOOGLE_API_KEY_STORAGE);
+  } catch {}
+
+  if (!chromeStorageAvailable()) return Promise.resolve(sanitized);
+
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.sync.set({ [GOOGLE_API_KEY_STORAGE]: sanitized }, () => {
+        resolve(sanitized);
+      });
+    } catch {
+      resolve(sanitized);
+    }
+  });
+}
+
+function clearGoogleApiKey() {
+  setGoogleApiKey('');
+  try { localStorage.removeItem(GOOGLE_API_KEY_STORAGE); } catch {}
+
+  const fallback = () => {
+    setGoogleApiKey(window.cidAppConfig?.googleApiKey || '');
+    return getGoogleApiKey();
+  };
+
+  if (!chromeStorageAvailable()) return Promise.resolve(fallback());
+
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.sync.remove(GOOGLE_API_KEY_STORAGE, () => {
+        if (chrome.runtime?.lastError) {
+          resolve(fallback());
+          return;
+        }
+        resolve(fallback());
+      });
+    } catch {
+      resolve(fallback());
+    }
+  });
+}
+
+function updateApiKeyStatus(message) {
+  const statusEl = document.getElementById('apiKeyStatus');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+}
+
+function initializeApiKeySettings() {
+  updateApiKeyStatus('Checking saved key...');
+  loadGoogleApiKeyFromStorage()
+    .then((stored) => {
+      if (stored) {
+        setGoogleApiKey(stored);
+        updateApiKeyStatus('API key ready for CID lookup.');
+      } else if (window.cidAppConfig?.googleApiKey) {
+        setGoogleApiKey(window.cidAppConfig.googleApiKey);
+        updateApiKeyStatus('Using API key from configuration file.');
+      } else {
+        updateApiKeyStatus('CID lookup inactive until a key is saved.');
+      }
+    })
+    .catch(() => {
+      updateApiKeyStatus('Unable to read saved key. Save it again if needed.');
+    });
+}
+
+function onApiKeySave(event) {
+  event?.preventDefault();
+  const input = document.getElementById('apiKeyInput');
+  if (!input) return;
+
+  const value = input.value.trim();
+  if (!value) {
+    flash('Enter an API key before saving.', 'warning');
+    return;
+  }
+
+  persistGoogleApiKey(value)
+    .then(() => {
+      input.value = '';
+      updateApiKeyStatus('API key saved locally.');
+      flash('API key saved');
+    })
+    .catch(() => {
+      updateApiKeyStatus('Unable to save API key.');
+      flash('Failed to save API key', 'error');
+    });
+}
+
+function onApiKeyClear(event) {
+  event?.preventDefault();
+  clearGoogleApiKey()
+    .then((current) => {
+      if (current) updateApiKeyStatus('Using configuration-supplied key.');
+      else updateApiKeyStatus('API key cleared. CID lookup disabled.');
+      flash('API key cleared', 'warning');
+    })
+    .catch(() => {
+      updateApiKeyStatus('Unable to clear API key.');
+      flash('Failed to clear API key', 'error');
+    });
 }
 
 // Column Management
@@ -1454,6 +1619,8 @@ function bindEvents() {
       flash('Data reset to defaults');
     }
   });
+  document.getElementById('apiKeySave')?.addEventListener('click', onApiKeySave);
+  document.getElementById('apiKeyClear')?.addEventListener('click', onApiKeyClear);
   document.getElementById('template')?.addEventListener('input', (e) => {
     state.template = e.target.value;
   });
