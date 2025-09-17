@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Manual Utils Tests</title>
+<pre id="out"></pre>
+<script>
+  // Standalone copies for manual verification (kept in sync with app.js)
+  function plusify(string) { return String(string || '').trim().replace(/\s+/g, '+'); }
+  const CSV = {
+    parse(text) {
+      const rows = []; let cur = [], val = '', i = 0, inQ = false;
+      while (i < text.length) {
+        const c = text[i];
+        if (inQ) { if (c === '"') { if (text[i+1] === '"') { val += '"'; i+=2; continue; } inQ=false; i++; continue; } val+=c; i++; continue; }
+        if (c === '"') { inQ = true; i++; continue; }
+        if (c === ',') { cur.push(val); val=''; i++; continue; }
+        if (c === '\n') { cur.push(val); rows.push(cur); cur=[]; val=''; i++; continue; }
+        if (c === '\r') { i++; continue; }
+        val += c; i++;
+      }
+      if (val.length || cur.length) { cur.push(val); rows.push(cur); }
+      return rows;
+    },
+    stringify(rows) {
+      const esc = (s) => { const str = String(s ?? ''); return /[",\n\r]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str; };
+      return rows.map(r => r.map(esc).join(',')).join('\n');
+    }
+  };
+
+  const cases = [];
+  cases.push(['plusify basic', plusify('a b  c') === 'a+b+c']);
+  cases.push(['plusify trims', plusify('  hello  world ') === 'hello+world']);
+  const csvIn = [['a','b,c','"q"'], ['1','2','3']];
+  const csv = CSV.stringify(csvIn);
+  const parsed = CSV.parse(csv);
+  cases.push(['csv stringify/parse roundtrip', JSON.stringify(parsed) === JSON.stringify(csvIn)]);
+
+  const out = document.getElementById('out');
+  out.textContent = cases.map(([name, ok]) => `${ok ? '✅' : '❌'} ${name}`).join('\n') + '\n\nCSV example:\n' + csv;
+</script>

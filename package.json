@@ -1,0 +1,12 @@
+{
+  "name": "urlmanipulator",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Static browser app for generating Google search URLs with CIDs.",
+  "scripts": {
+    "serve": "python3 -m http.server 5173",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "smoke": "node scripts/smoke.js"
+  }
+}

@@ -6,6 +6,11 @@
 - `style.css` — layout and component styles.
 - No bundler or backend; static assets only. If you add images, place them under `assets/` (create if needed).
 
+## Architecture Overview
+- State-first: `state` holds `columns`, `rows`, `template`; pure helpers compute derived values.
+- Render loop: `renderAll()` delegates to focused renderers (table, URL list, template UI, preview) and reads from `state`.
+- Events: all listeners are bound in `bindEvents()` to stable DOM IDs; update state, then re-render minimal sections.
+
 ## Build, Test, and Development Commands
 - Run locally (no build step): `python3 -m http.server 5173` then open `http://localhost:5173`.
 - Alternative (Node installed): `npx http-server -p 5173`.
@@ -51,14 +56,22 @@
   - Keep helpers pure (CSV, formula, URL parts). Avoid global leakage; prefer small modules within `app.js` sections.
   - Optimize hot paths (table render, computeRow) and avoid unnecessary DOM writes; batch updates where possible.
   - Preserve `localStorage` schema and default state; add migration only if necessary.
-- UI Expert
+- UI/UX Expert
   - Maintain semantic HTML, keyboard focus, visible focus states, and color contrast. Use existing classes and patterns.
-  - Test responsive behavior (320–1440px), avoid layout shifts, and keep button/label text specific.
-  - Screenshots for UI PRs: before/after plus hover/focus states.
-- Google Business Profile & Maps Expert
+  - Clarify flows and microcopy: label inputs, use helpful placeholders, and ensure `flash()` messages are actionable.
+  - Provide empty states (URL list, table), progress hints, undo-friendly actions; validate inline and preview changes via composition URL.
+  - Test responsive behavior (320–1440px), avoid layout shifts, and keep button/label text specific. Include before/after + hover/focus screenshots in PRs.
+ - Accessibility Expert
+   - Ensure headings are hierarchical, inputs have labels, and buttons have discernible text; verify tab order and focus management.
+   - Provide focus outlines, ARIA only when necessary, and sufficient color contrast; test with keyboard-only navigation.
+ - Performance Optimization Expert
+   - Avoid full-table rerenders for small edits; update affected row/cell and batch DOM writes via fragments.
+   - Memoize `computeRow` for unchanged inputs; throttle expensive operations and avoid layout thrash.
+- Google Maps & GBP Expert
   - Use Places API with restricted key (HTTP referrers); prefer `place_id`→`getDetails({ fields: ['url','name','place_id'] })` then extract `cid` from the Maps URL.
-  - Respect quotas and backoff; batch lookups, cache results in-memory, and fail softly when status ≠ OK.
-  - Validate CIDs (`^\d{10,20}$`), document any new fields, and avoid relying on unstable search params when an official field exists.
+  - Understand URL anatomy: `q` (brand), `oq` (original), `rldimm` (location CID), `rlst=f`, hash `rlfi=hd:;si=<GMBCID>`; support deep links by CID and `place_id`.
+  - Respect quotas and backoff; batch lookups, cache results, fail softly when status ≠ OK; set `hl`/`gl` for locale when needed.
+  - Validate CIDs (`^\d{10,20}$`); document new fields; avoid relying on unstable params when an official field exists.
   
   Example — get CID from place_id
   ```js
@@ -68,6 +81,11 @@
     const cid = extractCIDFromUrl(details?.url || '');       // uses existing helper in app.js
     return cid && /^\d{10,20}$/.test(cid) ? cid : '';
   }
+  ```
+  Example — Maps deep links
+  ```js
+  const fromCid = (cid) => `https://www.google.com/maps?cid=${encodeURIComponent(cid)}`;
+  const fromPlaceId = (pid, q='') => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}&query_place_id=${encodeURIComponent(pid)}`;
   ```
 - URL Encoding/Decoding Expert
   - Use `encodeURIComponent` for values; avoid encoding full URLs. For search-like `+` behavior use `URLSearchParams` or deliberate `string.replace(/\s+/g,'+')` and never both.
@@ -98,6 +116,24 @@
            `&rlst=f#rlfi=hd:;si=${encodeURIComponent(String(cidGmb || ''))}`;
   }
   ```
+ 
+ - Coder (Implementer)
+   - Start with a short plan, isolate changes, and keep diffs minimal; prefer pure helpers and small functions.
+   - Update only necessary renderers; avoid full reflows. Add light inline JSDoc if a function has tricky args.
+   - Manually test core flows and preserve `localStorage` compatibility; document toggles or new IDs in PR.
+ - Security Auditor
+   - Keys: never expose PlePer or server keys in browser code; restrict Google Maps key to referrers.
+   - DOM: avoid `innerHTML` with user data; prefer `textContent`/`value`. Review clipboard usage and URL construction for injection.
+   - Data: treat CSV as untrusted; validate headers/types, guard `evaluateFormula` inputs, and sanitize template outputs.
+ - Data Import Specialist (CSV)
+   - Headers must match input column names; ignore unknown headers. Preserve CRLF and quotes; verify with test files.
+   - Large files: stream or chunk if introduced; keep UI responsive and show counts/feedback via `flash()`.
+ - QA Tester
+   - Cross-browser: test latest Chrome/Edge/Firefox/Safari; mobile width checks. Validate copy-to-clipboard fallbacks.
+   - Acceptance: Bulk Import → Compose URL preview → Edit row → Copy/Export/Import → Template presets → View toggle.
+ - Release & Deployment
+   - Static hosting: verify via local server, then deploy to GitHub Pages/Netlify; confirm no network calls except Maps.
+   - Versioning: follow semantic commit messages; maintain a brief CHANGELOG in PRs (Added/Changed/Fixed).
 
 ## PlePer MCP Integration
 - Setup
