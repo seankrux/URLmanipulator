@@ -1794,6 +1794,10 @@ let googleLoading = null;
  * race conditions when multiple components need Places API access.
  */
 function loadGooglePlaces(apiKey) {
+  if (!String(apiKey || '').trim()) {
+    return Promise.reject(new Error('Google API key is required to load Google Places.'));
+  }
+
   // Return immediately if API is already loaded
   if (window.google?.maps?.places) return Promise.resolve();
 
@@ -1844,7 +1848,12 @@ function loadGooglePlaces(apiKey) {
  * and reduces setup time for new locations.
  */
 function deriveCIDFromLocation(location) {
-  return loadGooglePlaces(GOOGLE_API_KEY)
+  const apiKey = getGoogleApiKey();
+  if (!apiKey) {
+    return Promise.reject(new Error('Google API key is not configured.'));
+  }
+
+  return loadGooglePlaces(apiKey)
     .then(() => {
       if (!window.google?.maps?.places) throw new Error('Google Places not loaded');
 
@@ -2118,6 +2127,7 @@ function initApp() {
   loadAll();
   ensureDefaults();
   bindEvents();
+  initializeApiKeySettings();
   renderAll();
 }
 
