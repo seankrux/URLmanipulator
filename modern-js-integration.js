@@ -18,7 +18,7 @@ class CIDGeneratorApp {
 
   constructor(config = {}) {
     this.config = {
-      googleApiKey: config.googleApiKey || "AIzaSyD4Njem--rFlGOjQ-h-fST7efu3lAtFzKM",
+      googleApiKey: config.googleApiKey || '',
       storageKey: config.storageKey || "cid-generator-v1",
       enablePerformanceMode: config.enablePerformanceMode ?? true,
       enableWebWorkers: config.enableWebWorkers ?? true,
@@ -259,14 +259,13 @@ class CIDGeneratorApp {
    * Modern async keyword import with validation
    */
   async #importKeywords() {
-    const formData = this.#getFormData(['impBrand', 'impCidLoc', 'impCidGmb', 'impLocation', 'impKws', 'impMode']);
+    const formData = this.#getFormData(['impBrand', 'impCidLoc', 'impCidGmb', 'impKws', 'impMode']);
 
     // Destructuring with defaults
     const {
       impBrand: brand = '',
       impCidLoc: cidLoc = '',
       impCidGmb: cidGmb = '',
-      impLocation: location = '',
       impKws: kwsText = '',
       impMode: mode = 'append'
     } = formData;
@@ -598,18 +597,38 @@ class CIDGeneratorApp {
 
 // Initialize app when DOM is ready
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', () => {
-    // Check if running in module context or need to use global scope
-    if (typeof OptimizedStateManager !== 'undefined') {
-      window.cidApp = new CIDGeneratorApp();
-    } else {
-      console.warn('Optimized modules not loaded, falling back to legacy initialization');
-      // Fallback to existing initApp function
-      if (typeof initApp === 'function') {
-        initApp();
+  // Wait for dependencies to load and DOM to be ready
+  function initializeWithDependencyCheck() {
+    if (typeof OptimizedStateManager !== 'undefined' &&
+        typeof OptimizedFormulaEngine !== 'undefined' &&
+        typeof GooglePlacesManager !== 'undefined') {
+      try {
+        window.cidApp = new CIDGeneratorApp();
+        console.log('CID Generator initialized with modern modules');
+      } catch (error) {
+        console.warn('Modern initialization failed, falling back to legacy:', error);
+        fallbackToLegacy();
       }
+    } else {
+      console.log('Optimized modules not available, using legacy initialization');
+      fallbackToLegacy();
     }
-  });
+  }
+
+  function fallbackToLegacy() {
+    if (typeof initApp === 'function') {
+      initApp();
+    } else {
+      console.error('No initialization function available');
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWithDependencyCheck);
+  } else {
+    initializeWithDependencyCheck();
+  }
 }
 
 // Export for module systems

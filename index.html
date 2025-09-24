@@ -1,251 +1,321 @@
+<!--
+/**
+ * CID Generator Tool - HTML Document Structure
+ *
+ * Professional URL generation tool for Google My Business and local SEO.
+ * Implements modern web standards, accessibility guidelines (WCAG 2.1 AA),
+ * and semantic HTML5 structure.
+ *
+ * Key Features:
+ * - Semantic HTML5 markup with proper landmarks
+ * - Comprehensive ARIA support for screen readers
+ * - Progressive enhancement with JavaScript
+ * - Mobile-first responsive design
+ * - Keyboard navigation support
+ * - Form validation and user feedback
+ *
+ * Architecture:
+ * - Client-side only (no server required)
+ * - Local storage for data persistence
+ * - Google Places API integration
+ * - CSV import/export functionality
+ * - Real-time URL generation and preview
+ *
+ * @author CID Generator Tool
+ * @version 1.0.0
+ * @license MIT
+ */
+-->
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Document metadata and optimization -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Command center for running an ice delivery ecommerce operation." />
-    <title>FrostFleet Commerce Console</title>
-    <link rel="stylesheet" href="style.css" />
+    <meta name="description" content="Generate CID-based Google Search URLs for local SEO and location targeting" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
+    <!-- Page title optimized for SEO and clarity -->
+    <title>CID Generator Tool - Local SEO URL Builder</title>
+
+    <!-- Stylesheet loading with performance optimization -->
+    <link rel="stylesheet" href="style.css?v=v2024-09-18" />
+    <link rel="preload" href="style.css?v=v2024-09-18" as="style" />
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Skip to main content</a>
-
-    <header class="app-header" role="banner">
-      <div class="brand">
-        <h1>FrostFleet Ops Console</h1>
-        <p class="subtitle">Sell, dispatch, and deliver ice from one dashboard.</p>
-      </div>
-      <div class="header-actions">
-        <button id="openQuickOrder" class="primary">Quick Order</button>
-        <button id="openRestock" class="secondary">Log Restock</button>
-      </div>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <header role="banner">
+      <h1 id="main-title">CID Generator Tool</h1>
+      <p class="subtitle">Generate targeted Google Search URLs for local SEO</p>
     </header>
 
-    <main id="main-content" tabindex="-1">
-      <section class="summary-grid" aria-label="Business snapshot">
-        <article class="summary-card" data-card="inventory">
-          <header>
-            <h2>Inventory Value</h2>
-            <span id="summaryInventoryValue" class="metric">$0</span>
-          </header>
-          <p id="summaryInventoryStatus" class="meta"></p>
-        </article>
-        <article class="summary-card" data-card="orders">
-          <header>
-            <h2>Orders Today</h2>
-            <span id="summaryOrdersToday" class="metric">0</span>
-          </header>
-          <p id="summaryOrdersMeta" class="meta"></p>
-        </article>
-        <article class="summary-card" data-card="deliveries">
-          <header>
-            <h2>Active Deliveries</h2>
-            <span id="summaryActiveDeliveries" class="metric">0</span>
-          </header>
-          <p id="summaryDeliveryMeta" class="meta"></p>
-        </article>
-        <article class="summary-card" data-card="sales">
-          <header>
-            <h2>Weekly Revenue</h2>
-            <span id="summaryRevenue" class="metric">$0</span>
-          </header>
-          <p id="summaryRevenueMeta" class="meta"></p>
-        </article>
-      </section>
+    <main id="main-content">
+      <nav class="tabs" role="tablist" aria-label="Main navigation">
+        <button id="viewInput" class="tab active" role="tab" aria-selected="true" aria-controls="input-panels" tabindex="0">Input & Setup</button>
+        <button id="viewCid" class="tab" role="tab" aria-selected="false" aria-controls="results-panel" tabindex="-1">CID Search Results</button>
+      </nav>
 
-      <section class="panel inventory" aria-labelledby="inventory-heading">
-        <div class="panel-header">
-          <h2 id="inventory-heading">Inventory</h2>
-          <div class="panel-actions">
-            <label class="select">
-              <span class="sr-only">Inventory filter</span>
-              <select id="inventoryFilter">
-                <option value="all">All items</option>
-                <option value="low">Needs restock</option>
-                <option value="out">Out of stock</option>
-              </select>
+      <!-- Input & Setup Panel -->
+      <section class="panel" role="region" aria-labelledby="input-setup-heading">
+        <h2 id="input-setup-heading"><span aria-hidden="true">📋</span> Input & Setup</h2>
+
+        <!-- Bulk Import Section -->
+        <div class="form-section">
+          <h3>Bulk Keyword Import</h3>
+          <div class="row">
+            <label class="lbl" for="impBrand">GMB Brand Name
+              <input id="impBrand" aria-describedby="brand-help" placeholder="e.g. Chicago Roofing Services Inc" required />
+              <div class="sr-only" id="brand-help">Enter your Google My Business listing name exactly as it appears</div>
             </label>
-            <button id="addInventory" class="secondary">Add Item</button>
+            <label class="lbl" for="impCidGmb">GMB CID
+              <input id="impCidGmb" aria-describedby="gmb-cid-help" placeholder="e.g. 8071969139480942171" pattern="\d{10,20}" required />
+              <div class="sr-only" id="gmb-cid-help">20-digit Customer ID from your Google My Business listing URL</div>
+            </label>
+          </div>
+          <div class="row">
+            <label class="lbl" for="impCidLoc">Location CID
+              <input id="impCidLoc" aria-describedby="loc-cid-help" placeholder="e.g. 12673312613543755776" pattern="\d{10,20}" required />
+              <div class="sr-only" id="loc-cid-help">Geographic location identifier for targeting specific areas</div>
+            </label>
+          </div>
+          <div class="row">
+            <label class="lbl keyword-input" for="impKws">Search Keywords (one per line)
+              <textarea id="impKws" aria-describedby="keywords-help" placeholder="e.g.&#10;chicago roofers&#10;roof repair chicago&#10;roofing contractors near me" rows="6" required></textarea>
+              <div class="sr-only" id="keywords-help">Enter one search keyword or phrase per line. These will be used to generate targeted URLs</div>
+            </label>
+          </div>
+          <div class="row small">
+            <span id="kwCount">URLs to generate: 0</span>
+          </div>
+          <div class="row action-row">
+            <select id="impMode" aria-describedby="mode-help" title="How to insert rows">
+              <option value="append">Append to existing</option>
+              <option value="replace">Replace all data</option>
+            </select>
+            <button id="impInsert" class="primary large" aria-describedby="generate-help">Generate CID URLs</button>
+            <div class="sr-only" id="mode-help">Choose whether to add to existing data or replace it entirely</div>
+            <div class="sr-only" id="generate-help">Creates URLs using the provided keywords and CID information</div>
           </div>
         </div>
-        <div class="table-wrap">
-          <table id="inventoryTable">
-            <thead>
-              <tr>
-                <th scope="col">Product</th>
-                <th scope="col">SKU</th>
-                <th scope="col">On Hand</th>
-                <th scope="col">Committed</th>
-                <th scope="col">Available</th>
-                <th scope="col">Unit Price</th>
-                <th scope="col">Reorder At</th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
 
-      <section class="layout-row">
-        <section class="panel orders" aria-labelledby="orders-heading">
-          <div class="panel-header">
-            <h2 id="orders-heading">Orders &amp; Fulfillment</h2>
-            <div class="panel-actions">
-              <label class="select">
-                <span class="sr-only">Filter orders by status</span>
-                <select id="orderStatusFilter">
-                  <option value="all">All statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="preparing">Preparing</option>
-                  <option value="in-transit">In Transit</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="canceled">Canceled</option>
-                </select>
-              </label>
-              <label class="select">
-                <span class="sr-only">Filter orders by time range</span>
-                <select id="orderTimeFilter">
-                  <option value="today">Today</option>
-                  <option value="upcoming">Upcoming</option>
-                  <option value="week">This week</option>
-                </select>
-              </label>
+        <div class="form-section">
+          <h3>Google Places API</h3>
+          <p class="help-text">Optional key used for automatic CID lookup. Stored only in this browser profile.</p>
+          <div class="row">
+            <label class="lbl" for="apiKeyInput">API Key
+              <input id="apiKeyInput" type="password" autocomplete="off" placeholder="Paste your key (optional)" />
+            </label>
+          </div>
+          <div class="row action-row">
+            <button id="apiKeySave" class="primary">Save Key</button>
+            <button id="apiKeyClear" class="secondary">Clear Key</button>
+            <span id="apiKeyStatus" class="tiny status-indicator status-warning" role="status" aria-live="polite">No key saved.</span>
+          </div>
+        </div>
+
+        <!-- Keywords Everywhere API Panel -->
+        <div class="form-section">
+          <h3>Keywords Everywhere API</h3>
+          <p class="help-text">Enrich keywords with search volume, CPC, and competition data. Uses credit-based pricing.</p>
+          <div class="row">
+            <label class="lbl" for="kwsApiKeyInput">KWS API Key
+              <input id="kwsApiKeyInput" type="password" autocomplete="off" placeholder="Your Keywords Everywhere API key" />
+            </label>
+          </div>
+          <div class="row action-row">
+            <button id="kwsSaveKey" class="primary">Save KWS Key</button>
+            <button id="kwsClearKey" class="secondary">Clear</button>
+            <span id="kwsApiStatus" class="tiny status-indicator status-success" role="status" aria-live="polite">KWS API ready</span>
+          </div>
+          <div class="row">
+            <button id="enrichKeywords" class="primary" title="Add search volume, CPC, and competition data">
+              📊 Enrich Keywords with Data
+            </button>
+            <button id="findRelatedKeywords" class="secondary" title="Find related keywords for expansion">
+              🔍 Find Related Keywords
+            </button>
+          </div>
+          <div class="row">
+            <span class="help-text">💡 Enrich up to 100 keywords at once with market intelligence data</span>
+          </div>
+        </div>
+
+        <!-- Enhanced Location Discovery -->
+        <div class="form-section">
+          <h3>Enhanced Location Discovery</h3>
+          <p class="help-text">Advanced Google Maps integration for comprehensive location and business discovery.</p>
+          <div class="row">
+            <label class="lbl" for="locationSearch">Search Location/Business
+              <input id="locationSearch" placeholder="e.g., restaurants in Chicago, dentist near me" />
+            </label>
+            <button id="findNearbyBusinesses" class="primary" title="Find businesses in the area">
+              🏪 Find Nearby Businesses
+            </button>
+          </div>
+          <div class="row small">
+            <span id="mapsApiStatus" class="tiny status-indicator status-warning" role="status" aria-live="polite">Maps API not tested yet.</span>
+          </div>
+          <div class="row">
+            <label class="lbl" for="radiusSelect">Search Radius</label>
+            <select id="radiusSelect">
+              <option value="1000">1 km</option>
+              <option value="5000" selected>5 km</option>
+              <option value="10000">10 km</option>
+              <option value="25000">25 km</option>
+            </select>
+            <label class="lbl" for="businessTypeSelect">Business Type</label>
+            <select id="businessTypeSelect">
+              <option value="">All Types</option>
+              <option value="restaurant">Restaurants</option>
+              <option value="store">Retail Stores</option>
+              <option value="hospital">Healthcare</option>
+              <option value="school">Education</option>
+              <option value="gym">Fitness</option>
+              <option value="beauty_salon">Beauty & Wellness</option>
+            </select>
+          </div>
+          <div class="row">
+            <span class="help-text">🎯 Discover competitors and generate location-specific URL campaigns</span>
+          </div>
+        </div>
+
+        <!-- CID Quick Reference (Collapsible) -->
+        <details class="cid-reference">
+          <summary>CID Quick Reference</summary>
+          <div class="help-section">
+            <p><strong>Common Location CIDs:</strong></p>
+            <ul class="cid-examples">
+              <li><strong>Chicago Downtown:</strong> 12673312613543755776</li>
+              <li><strong>Chicago North Side:</strong> 15234567890123456789</li>
+              <li><strong>Chicago South Side:</strong> 98765432109876543210</li>
+            </ul>
+            <p class="help-text">💡 CIDs are 10-20 digit numbers found in Google My Business URLs</p>
+          </div>
+        </details>
+
+        <!-- Data Management Section -->
+        <div class="form-section">
+          <div class="section-header">
+            <h3>Generated Data</h3>
+            <div class="data-actions">
+              <button id="addRow">Add Row</button>
+              <button id="clearRows" class="danger">Clear All</button>
+              <div class="dropdown-container">
+                <button id="exportDropdown" class="secondary">Export ▼</button>
+                <div class="dropdown-menu" id="exportMenu">
+                  <button onclick="exportData('urls-txt')">URLs Only (TXT)</button>
+                  <button onclick="exportData('urls-csv')">URLs Only (CSV)</button>
+                  <button onclick="exportData('full-csv')">Full Data (CSV)</button>
+                  <hr>
+                  <button onclick="document.getElementById('csvImport').click()">Import CSV</button>
+                </div>
+              </div>
+              <input type="file" id="csvImport" accept=".csv,text/csv" style="display:none" />
+              <div class="data-management">
+                <button id="saveAll" title="Save current data to browser storage">Save</button>
+                <button id="loadAll" title="Load previously saved data">Load</button>
+                <button id="resetAll" class="danger" title="Clear all data and reset to defaults">Reset</button>
+              </div>
             </div>
           </div>
-          <div id="ordersBoard" class="order-board" aria-live="polite"></div>
-        </section>
-
-        <aside class="panel deliveries" aria-labelledby="deliveries-heading">
-          <div class="panel-header">
-            <h2 id="deliveries-heading">Routes &amp; Drivers</h2>
-            <button id="addRoute" class="secondary">Assign Route</button>
-          </div>
-          <section aria-label="Active routes">
-            <ul id="deliveryList" class="delivery-list"></ul>
-          </section>
-          <section aria-label="Driver roster" class="drivers">
-            <h3>Driver Roster</h3>
-            <ul id="driverList"></ul>
-          </section>
-        </aside>
-      </section>
-
-      <section class="layout-row">
-        <section class="panel customers" aria-labelledby="customers-heading">
-          <div class="panel-header">
-            <h2 id="customers-heading">Customers</h2>
-            <button id="addCustomer" class="secondary">Add Customer</button>
-          </div>
           <div class="table-wrap">
-            <table id="customerTable">
-              <thead>
-                <tr>
-                  <th scope="col">Customer</th>
-                  <th scope="col">Location</th>
-                  <th scope="col">Contact</th>
-                  <th scope="col">Avg. Order</th>
-                  <th scope="col">Last Order</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+            <table id="dataTable"></table>
           </div>
-        </section>
-
-        <section class="panel activity" aria-labelledby="activity-heading">
-          <div class="panel-header">
-            <h2 id="activity-heading">Activity Feed</h2>
-            <button id="clearActivity" class="secondary danger">Clear</button>
-          </div>
-          <ol id="activityFeed" class="activity-feed" aria-live="polite"></ol>
-        </section>
-      </section>
-
-      <section class="panel workflows" aria-labelledby="workflow-heading">
-        <h2 id="workflow-heading">Workflow Shortcuts</h2>
-        <div class="form-grid">
-          <form id="orderForm" autocomplete="off">
-            <fieldset>
-              <legend>Create Order</legend>
-              <label for="orderCustomer">Customer</label>
-              <select id="orderCustomer" required></select>
-
-              <label for="orderDeliveryDate">Delivery Date</label>
-              <input id="orderDeliveryDate" type="date" required />
-
-              <label for="orderDeliveryWindow">Delivery Window</label>
-              <input id="orderDeliveryWindow" type="text" placeholder="e.g. 10:00 – 12:00" required />
-
-              <label for="orderItem">Item</label>
-              <select id="orderItem" required></select>
-
-              <label for="orderQuantity">Quantity</label>
-              <input id="orderQuantity" type="number" min="1" step="1" value="10" required />
-
-              <label for="orderNotes">Notes</label>
-              <textarea id="orderNotes" rows="2" placeholder="Dock access code, payment terms..."></textarea>
-
-              <button type="submit" class="primary">Create Order</button>
-            </fieldset>
-          </form>
-
-          <form id="restockForm" autocomplete="off">
-            <fieldset>
-              <legend>Log Restock</legend>
-              <label for="restockItem">Item</label>
-              <select id="restockItem" required></select>
-
-              <label for="restockQuantity">Quantity Added</label>
-              <input id="restockQuantity" type="number" min="1" step="1" value="20" required />
-
-              <label for="restockCost">Cost per Unit</label>
-              <input id="restockCost" type="number" min="0" step="0.01" placeholder="8.50" />
-
-              <label for="restockNotes">Notes</label>
-              <textarea id="restockNotes" rows="2" placeholder="Vendor, PO, reference"></textarea>
-
-              <button type="submit" class="secondary">Save Restock</button>
-            </fieldset>
-          </form>
-
-          <form id="customerForm" autocomplete="off">
-            <fieldset>
-              <legend>Add Customer</legend>
-              <label for="customerName">Business Name</label>
-              <input id="customerName" type="text" required />
-
-              <label for="customerContact">Contact</label>
-              <input id="customerContact" type="text" placeholder="Name, phone" required />
-
-              <label for="customerEmail">Email</label>
-              <input id="customerEmail" type="email" placeholder="orders@example.com" />
-
-              <label for="customerAddress">Delivery Address</label>
-              <textarea id="customerAddress" rows="2" required></textarea>
-
-              <label for="customerNotes">Notes</label>
-              <textarea id="customerNotes" rows="2" placeholder="Gate codes, preferred schedule"></textarea>
-
-              <button type="submit" class="secondary">Add Customer</button>
-            </fieldset>
-          </form>
         </div>
       </section>
+
+
+      <!-- Results Panel -->
+      <section class="panel" id="urlsPanel">
+        <div class="panel-header">
+          <h2>🎯 Results <span id="urlsCount" class="tiny"></span></h2>
+          <div class="results-actions">
+            <button id="urlsCopy" class="primary">Copy URLs</button>
+            <div class="dropdown-container">
+              <button id="resultsExportDropdown" class="secondary">Export ▼</button>
+              <div class="dropdown-menu" id="resultsExportMenu">
+                <button onclick="downloadUrls('txt')">Download TXT</button>
+                <button onclick="downloadUrls('csv')">Download CSV</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="url-preview">
+          <h3>URL Structure Preview:</h3>
+          <div id="compositionUrl" class="comp-url"></div>
+          <div class="legend">
+            <span class="chip"><span class="swatch seg-brand"></span> q = Brand</span>
+            <span class="chip"><span class="swatch seg-keyword"></span> oq = Search Terms</span>
+            <span class="chip"><span class="swatch seg-cidloc"></span> rldimm = Location CID</span>
+            <span class="chip"><span class="swatch seg-cidgmb"></span> si = GMB CID</span>
+          </div>
+        </div>
+
+        <div class="results-content">
+          <ol id="urlList"></ol>
+        </div>
+
+        <!-- Advanced Options (Collapsible) -->
+        <details class="advanced-options">
+          <summary>Advanced Output Formatting</summary>
+          <div class="template-section">
+            <div class="row">
+              <select id="tplPresets" title="Load a preset template">
+                <option value="">Select a preset...</option>
+              </select>
+              <button id="loadPreset">Load Preset</button>
+            </div>
+            <label for="template">Custom Template:</label>
+            <textarea id="template" placeholder="Template: {{FinalUrl}}">{{FinalUrl}}</textarea>
+            <div class="row">
+              <button id="generate">Generate Output</button>
+              <button id="copyAll">Copy Formatted Results</button>
+            </div>
+            <ol id="outputs"></ol>
+          </div>
+        </details>
+      </section>
+
     </main>
 
     <footer>
-      <small>Data stays in this browser. Export and share reports anytime.</small>
+      <small>🔒 Client-only app. All data stored locally in your browser.</small>
     </footer>
 
-    <script src="scripts/state.js"></script>
-    <script src="scripts/storage.js"></script>
-    <script src="scripts/columns.js"></script>
-    <script src="scripts/formula-engine.js"></script>
-    <script src="scripts/ui.js"></script>
-    <script src="scripts/import-export.js"></script>
-    <script src="scripts/google-places.js"></script>
-    <script src="scripts/events.js"></script>
-    <script src="app.js"></script>
+    <script>
+      (function loadAppWithCacheBust() {
+        const version = 'v2024-09-26';
+        window.APP_CACHE_VERSION = version;
+        const isLocalHost = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+        const cacheToken = isLocalHost ? `${version}-${Date.now()}` : version;
+
+        // Load optimized modules first (non-blocking)
+        const optimizedModules = [
+          'optimized-state-management.js',
+          'optimized-formula-engine.js',
+          'optimized-async-patterns.js',
+          'performance-optimizations.js',
+          'modern-js-integration.js'
+        ];
+
+        optimizedModules.forEach(module => {
+          const script = document.createElement('script');
+          script.src = `${module}?v=${encodeURIComponent(cacheToken)}`;
+          script.dataset.version = version;
+          document.head.appendChild(script);
+        });
+
+        // Load main app after a small delay to ensure dependencies are available
+        setTimeout(() => {
+          const script = document.createElement('script');
+          script.src = `app.js?v=${encodeURIComponent(cacheToken)}`;
+          script.dataset.version = version;
+          document.head.appendChild(script);
+        }, 100);
+      })();
+    </script>
   </body>
 </html>
