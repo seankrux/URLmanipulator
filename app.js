@@ -1,6 +1,15 @@
 // Storage and Configuration
-const STORAGE_KEY = "cid-generator-v1";
-const GOOGLE_API_KEY = "AIzaSyD4Njem--rFlGOjQ-h-fST7efu3lAtFzKM";
+const STORAGE_KEY = 'cid-generator-v1';
+const GOOGLE_API_KEY_STORAGE = 'cid-generator-google-api';
+const KWS_API_KEY_STORAGE = 'cid-generator-kws-api';
+const KWS_API_BASE_URL = 'https://api.keywordseverywhere.com/v1/';
+const APP_CACHE_VERSION = (typeof window !== 'undefined' && window.APP_CACHE_VERSION) || 'v2024-09-26';
+
+// API Configuration
+const DEFAULT_GOOGLE_API_KEY = '';
+const DEFAULT_KWS_API_KEY = '';
+let googleApiKey = DEFAULT_GOOGLE_API_KEY; // In-memory Google Maps API key cache
+let kwsApiKey = DEFAULT_KWS_API_KEY; // In-memory Keywords Everywhere API key cache
 
 /**
  * Persists the current application state to browser localStorage
@@ -81,6 +90,558 @@ function resetAll() {
   state.columns = defaultColumns();
   state.rows = [];
   state.template = '{{FinalUrl}}';
+}
+
+/**
+ * Removes any residual service workers to avoid stale asset caching
+ */
+function purgeServiceWorkers() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.getRegistrations()
+      .then(registrations => registrations.forEach(reg => reg.unregister()))
+      .catch(() => {});
+  } catch {}
+}
+
+/**
+ * Records the current app build version to help invalidate stale caches
+ */
+function recordAppVersionStamp() {
+  try {
+    const key = 'cid-generator-cache-version';
+    const previous = localStorage.getItem(key);
+    if (previous && previous !== APP_CACHE_VERSION) {
+      flash('App updated to the latest build.', 'success');
+    }
+    localStorage.setItem(key, APP_CACHE_VERSION);
+  } catch {}
+}
+
+// Google Places API configuration management
+
+function chromeStorageAvailable() {
+  try {
+    return typeof chrome !== 'undefined' && !!chrome.storage?.sync;
+  } catch {
+    return false;
+  }
+}
+
+function setGoogleApiKey(value) {
+  googleApiKey = String(value || '').trim();
+}
+
+function getGoogleApiKey() {
+  if (googleApiKey) return googleApiKey;
+  const fallback = window.cidAppConfig?.googleApiKey;
+  if (fallback) setGoogleApiKey(fallback);
+  return googleApiKey;
+}
+
+function loadGoogleApiKeyFromStorage() {
+  return new Promise((resolve) => {
+    const fallback = () => {
+      try {
+        const localValue = localStorage.getItem(GOOGLE_API_KEY_STORAGE) || '';
+        resolve(localValue.trim());
+      } catch {
+        resolve('');
+      }
+    };
+
+    if (!chromeStorageAvailable()) {
+      fallback();
+      return;
+    }
+
+    try {
+      chrome.storage.sync.get([GOOGLE_API_KEY_STORAGE], (items) => {
+        if (chrome.runtime?.lastError) {
+          fallback();
+          return;
+        }
+
+        const value = items?.[GOOGLE_API_KEY_STORAGE];
+        if (typeof value === 'string' && value.trim()) resolve(value.trim());
+        else fallback();
+      });
+    } catch {
+      fallback();
+    }
+  });
+}
+
+function persistGoogleApiKey(value) {
+  const sanitized = String(value || '').trim();
+  setGoogleApiKey(sanitized);
+
+  try {
+    if (sanitized) localStorage.setItem(GOOGLE_API_KEY_STORAGE, sanitized);
+    else localStorage.removeItem(GOOGLE_API_KEY_STORAGE);
+  } catch {}
+
+  if (!chromeStorageAvailable()) return Promise.resolve(sanitized);
+
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.sync.set({ [GOOGLE_API_KEY_STORAGE]: sanitized }, () => {
+        resolve(sanitized);
+      });
+    } catch {
+      resolve(sanitized);
+    }
+  });
+}
+
+function clearGoogleApiKey() {
+  setGoogleApiKey('');
+  try { localStorage.removeItem(GOOGLE_API_KEY_STORAGE); } catch {}
+
+  const fallback = () => {
+    setGoogleApiKey(window.cidAppConfig?.googleApiKey || '');
+    return getGoogleApiKey();
+  };
+
+  if (!chromeStorageAvailable()) return Promise.resolve(fallback());
+
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.sync.remove(GOOGLE_API_KEY_STORAGE, () => {
+        if (chrome.runtime?.lastError) {
+          resolve(fallback());
+          return;
+        }
+        resolve(fallback());
+      });
+    } catch {
+      resolve(fallback());
+    }
+  });
+}
+
+function updateApiKeyStatus(message, tone = 'info') {
+  const statusEl = document.getElementById('apiKeyStatus');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.add('status-indicator');
+
+  const toneClasses = ['status-success', 'status-error', 'status-warning'];
+  toneClasses.forEach(cls => statusEl.classList.remove(cls));
+
+  if (tone === 'success' || tone === 'error' || tone === 'warning') {
+    statusEl.classList.add(`status-${tone}`);
+  }
+}
+
+function updateMapsApiStatus(message, tone = 'info') {
+  const statusEl = document.getElementById('mapsApiStatus');
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.classList.add('status-indicator');
+
+  const toneClasses = ['status-success', 'status-error', 'status-warning'];
+  toneClasses.forEach(cls => statusEl.classList.remove(cls));
+
+  if (tone === 'success' || tone === 'error' || tone === 'warning') {
+    statusEl.classList.add(`status-${tone}`);
+  }
+}
+
+function applyMaskedKeyToInput(input, {
+  storedValue = '',
+  defaultValue = '',
+  placeholderWhenDefault = '',
+  placeholderWhenEmpty = '',
+  maskedTitle = ''
+} = {}) {
+  if (!input) return { masked: false, state: 'missing-input' };
+
+  input.dataset.maskState = 'uninitialized';
+  input.style.fontFamily = '';
+  input.style.color = '';
+  input.title = '';
+
+  if (!storedValue) {
+    if (placeholderWhenEmpty) input.placeholder = placeholderWhenEmpty;
+    input.value = '';
+    input.dataset.maskState = 'empty';
+    return { masked: false, state: 'empty' };
+  }
+
+  if (storedValue === defaultValue) {
+    if (placeholderWhenDefault) input.placeholder = placeholderWhenDefault;
+    input.value = '';
+    input.style.color = '#999';
+    input.dataset.maskState = 'default';
+    return { masked: false, state: 'default' };
+  }
+
+  input.value = '••••••••••••••••••••••••••••••••••••••••' + storedValue.slice(-4);
+  input.style.fontFamily = 'monospace';
+  input.style.color = '#666';
+  if (maskedTitle) input.title = maskedTitle;
+  input.dataset.maskState = 'masked';
+  return { masked: true, state: 'masked' };
+}
+
+function initializeApiKeySettings() {
+  updateApiKeyStatus('Checking saved key...');
+  loadGoogleApiKeyFromStorage()
+    .then((stored) => {
+      const input = document.getElementById('apiKeyInput');
+
+      if (stored) {
+        setGoogleApiKey(stored);
+        const maskResult = applyMaskedKeyToInput(input, {
+          storedValue: stored,
+          defaultValue: DEFAULT_GOOGLE_API_KEY,
+          placeholderWhenDefault: 'Paste your key (optional)',
+          placeholderWhenEmpty: 'Paste your key (optional)',
+          maskedTitle: 'Stored API key (click to modify)'
+        });
+        console.info('[MaskCheck] Google API input state:', maskResult.state);
+
+        if (maskResult.state === 'masked') {
+          updateApiKeyStatus('API key saved securely (mask verified).', 'success');
+        } else if (maskResult.state === 'default') {
+          updateApiKeyStatus('API key stored for this browser.', 'success');
+        } else if (maskResult.state === 'missing-input') {
+          updateApiKeyStatus('API key saved but input field missing in DOM.', 'warning');
+        } else {
+          updateApiKeyStatus('API key ready for CID lookup.', 'success');
+        }
+      } else if (window.cidAppConfig?.googleApiKey) {
+        const configKey = window.cidAppConfig.googleApiKey;
+        setGoogleApiKey(configKey);
+        const maskResult = applyMaskedKeyToInput(input, {
+          storedValue: configKey,
+          defaultValue: DEFAULT_GOOGLE_API_KEY,
+          placeholderWhenDefault: 'Paste your key (optional)',
+          placeholderWhenEmpty: 'Paste your key (optional)',
+          maskedTitle: 'Stored API key (click to modify)'
+        });
+        console.info('[MaskCheck] Google API config state:', maskResult.state);
+        updateApiKeyStatus('Using API key from configuration file.', 'success');
+      } else {
+        const maskResult = applyMaskedKeyToInput(input, {
+          storedValue: '',
+          defaultValue: DEFAULT_GOOGLE_API_KEY,
+          placeholderWhenEmpty: 'Paste your key (optional)'
+        });
+        console.info('[MaskCheck] Google API input state:', maskResult.state);
+        updateApiKeyStatus('CID lookup inactive until a key is saved.', 'warning');
+      }
+    })
+    .catch(() => {
+      updateApiKeyStatus('Unable to read saved key. Save it again if needed.', 'error');
+    });
+}
+
+/**
+ * Initializes Keywords Everywhere API settings on startup
+ */
+function initializeKwsApiSettings() {
+  updateKwsApiStatus('Loading KWS API configuration...');
+  loadKwsApiKeyFromStorage()
+    .then((stored) => {
+      const input = document.getElementById('kwsApiKeyInput');
+
+      if (stored) {
+        // Show masked key in input field when a key is stored
+        const maskResult = applyMaskedKeyToInput(input, {
+          storedValue: stored,
+          defaultValue: DEFAULT_KWS_API_KEY,
+          placeholderWhenDefault: 'Your Keywords Everywhere API key',
+          placeholderWhenEmpty: 'Your Keywords Everywhere API key',
+          maskedTitle: 'Stored KWS API key (click to modify)'
+        });
+        console.info('[MaskCheck] KWS API input state:', maskResult.state);
+
+        if (maskResult.state === 'masked') {
+          updateKwsApiStatus('KWS API key saved securely (mask verified).', 'success');
+        } else if (maskResult.state === 'default') {
+          updateKwsApiStatus('KWS API key stored for this browser.', 'success');
+        } else if (maskResult.state === 'missing-input') {
+          updateKwsApiStatus('KWS API key saved but input field missing in DOM.', 'warning');
+        } else {
+          updateKwsApiStatus('KWS API ready for keyword enrichment', 'success');
+        }
+      } else {
+        const maskResult = applyMaskedKeyToInput(input, {
+          storedValue: '',
+          defaultValue: DEFAULT_KWS_API_KEY,
+          placeholderWhenEmpty: 'Your Keywords Everywhere API key'
+        });
+        console.info('[MaskCheck] KWS API input state:', maskResult.state);
+        updateKwsApiStatus('KWS API inactive until a key is saved.', 'warning');
+      }
+    })
+    .catch(() => {
+      updateKwsApiStatus('Unable to load KWS API configuration', 'error');
+    });
+}
+
+function onApiKeySave(event) {
+  event?.preventDefault();
+  const input = document.getElementById('apiKeyInput');
+  if (!input) return;
+
+  const value = input.value.trim();
+  if (!value) {
+    flash('Enter an API key before saving.', 'warning');
+    return;
+  }
+
+  persistGoogleApiKey(value)
+    .then(() => {
+      setGoogleApiKey(value);
+      const maskResult = applyMaskedKeyToInput(input, {
+        storedValue: value,
+        defaultValue: DEFAULT_GOOGLE_API_KEY,
+        placeholderWhenDefault: 'Paste your key (optional)',
+        placeholderWhenEmpty: 'Paste your key (optional)',
+        maskedTitle: 'Stored API key (click to modify)'
+      });
+      console.info('[MaskCheck] Google API input state:', maskResult.state);
+      let statusMessage = 'API key saved locally.';
+      let tone = 'success';
+
+      if (maskResult.state === 'masked') {
+        statusMessage = 'API key saved securely (mask verified).';
+        tone = 'success';
+      } else if (maskResult.state === 'default') {
+        statusMessage = 'API key stored for this browser.';
+        tone = 'success';
+      } else if (maskResult.state === 'missing-input') {
+        statusMessage = 'API key saved but input field missing in DOM.';
+        tone = 'warning';
+      }
+
+      updateApiKeyStatus(statusMessage, tone);
+      flash('Google API key saved');
+    })
+    .catch(() => {
+      updateApiKeyStatus('Unable to save API key.', 'error');
+      flash('Failed to save API key', 'error');
+    });
+}
+
+function onApiKeyClear(event) {
+  event?.preventDefault();
+  clearGoogleApiKey()
+    .then((current) => {
+      const input = document.getElementById('apiKeyInput');
+      const maskResult = applyMaskedKeyToInput(input, {
+        storedValue: current,
+        defaultValue: DEFAULT_GOOGLE_API_KEY,
+        placeholderWhenDefault: 'Paste your key (optional)',
+        placeholderWhenEmpty: 'Paste your key (optional)',
+        maskedTitle: 'Stored API key (click to modify)'
+      });
+      console.info('[MaskCheck] Google API input state after clear:', maskResult.state);
+      if (current) updateApiKeyStatus('Using configuration-supplied key.', 'success');
+      else updateApiKeyStatus('API key cleared. CID lookup disabled.', 'warning');
+      flash('API key cleared', 'warning');
+    })
+    .catch(() => {
+      updateApiKeyStatus('Unable to clear API key.', 'error');
+      flash('Failed to clear API key', 'error');
+    });
+}
+
+// Keywords Everywhere API Management
+
+/**
+ * Loads Keywords Everywhere API key from storage
+ * Attempts chrome.storage.sync first, falls back to localStorage
+ */
+function loadKwsApiKeyFromStorage() {
+  return new Promise((resolve) => {
+    if (!chromeStorageAvailable()) {
+      const localValue = localStorage.getItem(KWS_API_KEY_STORAGE) || '';
+      kwsApiKey = localValue || kwsApiKey; // Use default if no stored value
+      resolve(kwsApiKey);
+      return;
+    }
+
+    chrome.storage.sync.get([KWS_API_KEY_STORAGE], (items) => {
+      if (chrome.runtime.lastError) {
+        const fallback = localStorage.getItem(KWS_API_KEY_STORAGE) || kwsApiKey;
+        kwsApiKey = fallback;
+        resolve(kwsApiKey);
+        return;
+      }
+
+      const value = items?.[KWS_API_KEY_STORAGE];
+      kwsApiKey = value || kwsApiKey; // Use default if no stored value
+      resolve(kwsApiKey);
+    });
+  });
+}
+
+/**
+ * Saves Keywords Everywhere API key to secure storage
+ * @param {string} key - The API key to save
+ */
+function saveKwsApiKey(key) {
+  const sanitized = String(key || '').trim();
+  kwsApiKey = sanitized || DEFAULT_KWS_API_KEY;
+
+  // Store in localStorage
+  if (sanitized) localStorage.setItem(KWS_API_KEY_STORAGE, sanitized);
+  else localStorage.removeItem(KWS_API_KEY_STORAGE);
+
+  // Store in chrome.storage.sync if available
+  if (!chromeStorageAvailable()) return Promise.resolve(sanitized);
+
+  return new Promise((resolve) => {
+    chrome.storage.sync.set({ [KWS_API_KEY_STORAGE]: sanitized }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn('Chrome storage failed, using localStorage only');
+      }
+      kwsApiKey = sanitized || DEFAULT_KWS_API_KEY;
+      resolve(sanitized);
+    });
+  });
+}
+
+/**
+ * Clears Keywords Everywhere API key from all storage
+ */
+function clearKwsApiKey() {
+  try { localStorage.removeItem(KWS_API_KEY_STORAGE); } catch {}
+
+  const fallback = () => {
+    kwsApiKey = DEFAULT_KWS_API_KEY;
+    return DEFAULT_KWS_API_KEY;
+  };
+
+  if (!chromeStorageAvailable()) return Promise.resolve(fallback());
+
+  return new Promise((resolve) => {
+    chrome.storage.sync.remove(KWS_API_KEY_STORAGE, () => {
+      if (chrome.runtime.lastError) {
+        console.warn('Chrome storage clear failed');
+      }
+      const value = fallback();
+      resolve(value);
+    });
+  });
+}
+
+/**
+ * Gets the current Keywords Everywhere API key
+ * @returns {string} Current API key
+ */
+function getKwsApiKey() {
+  return kwsApiKey || DEFAULT_KWS_API_KEY;
+}
+
+/**
+ * Updates the KWS API status display
+ * @param {string} message - Status message to display
+ */
+function updateKwsApiStatus(message, tone) {
+  const statusEl = document.getElementById('kwsApiStatus');
+  if (!statusEl) return;
+
+  const resolvedTone = tone || (getKwsApiKey() ? 'success' : 'warning');
+  statusEl.textContent = message;
+  statusEl.classList.add('status-indicator');
+  ['status-success', 'status-error', 'status-warning'].forEach(cls => statusEl.classList.remove(cls));
+  if (resolvedTone) statusEl.classList.add(`status-${resolvedTone}`);
+}
+
+/**
+ * Fetches keyword data from Keywords Everywhere API
+ * @param {Array<string>} keywords - Array of keywords to analyze (max 100)
+ * @returns {Promise<Object>} API response with keyword data
+ */
+async function getKeywordData(keywords) {
+  const apiKey = getKwsApiKey();
+  if (!apiKey) {
+    throw new Error('Keywords Everywhere API key not configured');
+  }
+
+  const keywordList = keywords.slice(0, 100); // API limit
+
+  try {
+    const response = await fetch(`${KWS_API_BASE_URL}get_keyword_data`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        keywords: keywordList,
+        dataSource: 'gkp', // Google Keyword Planner
+        country: 'US',
+        currency: 'USD'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Keywords Everywhere API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Keywords Everywhere API error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Gets related keywords for a given search term
+ * @param {string} keyword - Base keyword to find related terms for
+ * @returns {Promise<Object>} Related keywords data
+ */
+async function getRelatedKeywords(keyword) {
+  const apiKey = getKwsApiKey();
+  if (!apiKey) {
+    throw new Error('Keywords Everywhere API key not configured');
+  }
+
+  try {
+    const response = await fetch(`${KWS_API_BASE_URL}get_related_keywords`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        keyword: keyword,
+        country: 'US'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Keywords Everywhere API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Related keywords API error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Enriches existing keywords with search volume, CPC, and competition data
+ * @param {Array<string>} keywords - Keywords to enrich
+ * @returns {Promise<Array<Object>>} Enriched keyword data
+ */
+async function enrichKeywordsWithData(keywords) {
+  try {
+    updateKwsApiStatus('Fetching keyword data...');
+    const data = await getKeywordData(keywords);
+    updateKwsApiStatus('Keywords enriched successfully');
+    return data;
+  } catch (error) {
+    updateKwsApiStatus('Failed to enrich keywords');
+    throw error;
+  }
 }
 
 // Column Management
@@ -557,7 +1118,6 @@ function importKeywords() {
   const brand = document.getElementById('impBrand')?.value.trim();
   const cidLoc = document.getElementById('impCidLoc')?.value.trim();
   const cidGmb = document.getElementById('impCidGmb')?.value.trim();
-  const location = document.getElementById('impLocation')?.value.trim();
   const mode = document.getElementById('impMode')?.value;
   const kwsText = document.getElementById('impKws')?.value;
 
@@ -588,7 +1148,7 @@ function importKeywords() {
   }
 
   try {
-    populateFromImport(keywords, brand, cidLoc, cidGmb, location, mode);
+    populateFromImport(keywords, brand, cidLoc, cidGmb, mode);
     flashSuccess(`Successfully imported ${keywords.length} keywords`);
   } catch (error) {
     flashError('Failed to import keywords. Please check your input.');
@@ -611,7 +1171,6 @@ function importKeywords() {
  * @param {string} brand - Google My Business brand name
  * @param {string} cidLoc - Location Customer ID for geographic targeting
  * @param {string} cidGmb - Google My Business Customer ID
- * @param {string} location - Human-readable location name (unused in current implementation)
  * @param {string} [mode='append'] - Import mode: 'append' to add to existing data, 'replace' to clear first
  * @returns {void}
  *
@@ -622,7 +1181,6 @@ function importKeywords() {
  *   'Acme Roofing',
  *   '12673312613543755776',
  *   '8071969139480942171',
- *   'Chicago, IL',
  *   'append'
  * );
  *
@@ -631,7 +1189,7 @@ function importKeywords() {
  * are automatically calculated during rendering. Updates UI immediately after
  * population to show the new data.
  */
-function populateFromImport(keywords, brand, cidLoc, cidGmb, location, mode = 'append') {
+function populateFromImport(keywords, brand, cidLoc, cidGmb, mode = 'append') {
   // Clear existing data if replace mode is selected
   if (mode === 'replace') state.rows = [];
 
@@ -1454,6 +2012,66 @@ function bindEvents() {
       flash('Data reset to defaults');
     }
   });
+  document.getElementById('apiKeySave')?.addEventListener('click', onApiKeySave);
+  document.getElementById('apiKeyClear')?.addEventListener('click', onApiKeyClear);
+
+  // Keywords Everywhere API event handlers
+  document.getElementById('kwsSaveKey')?.addEventListener('click', onKwsSaveKey);
+  document.getElementById('kwsClearKey')?.addEventListener('click', onKwsClearKey);
+  document.getElementById('enrichKeywords')?.addEventListener('click', onEnrichKeywords);
+  document.getElementById('findRelatedKeywords')?.addEventListener('click', onFindRelatedKeywords);
+
+  // API key input field handlers
+  const googleApiInput = document.getElementById('apiKeyInput');
+  googleApiInput?.addEventListener('focus', function() {
+    if (this.value.startsWith('••••')) {
+      this.value = '';
+      this.style.color = '';
+      this.style.fontFamily = '';
+      this.placeholder = 'Paste your key (optional)';
+    }
+  });
+  googleApiInput?.addEventListener('blur', function() {
+    if (!this.value.trim() && this.dataset.maskState === 'masked') {
+      const stored = getGoogleApiKey();
+      applyMaskedKeyToInput(this, {
+        storedValue: stored,
+        defaultValue: DEFAULT_GOOGLE_API_KEY,
+        placeholderWhenDefault: 'Paste your key (optional)',
+        placeholderWhenEmpty: 'Paste your key (optional)',
+        maskedTitle: 'Stored API key (click to modify)'
+      });
+    }
+  });
+
+  const kwsApiInput = document.getElementById('kwsApiKeyInput');
+  kwsApiInput?.addEventListener('focus', function() {
+    if (this.value.startsWith('••••')) {
+      this.value = '';
+      this.style.color = '';
+      this.style.fontFamily = '';
+      this.placeholder = 'Your Keywords Everywhere API key';
+    }
+  });
+  kwsApiInput?.addEventListener('blur', function() {
+    if (!this.value.trim() && this.dataset.maskState === 'masked') {
+      const stored = getKwsApiKey();
+      applyMaskedKeyToInput(this, {
+        storedValue: stored,
+        defaultValue: DEFAULT_KWS_API_KEY,
+        placeholderWhenDefault: 'Your Keywords Everywhere API key',
+        placeholderWhenEmpty: 'Your Keywords Everywhere API key',
+        maskedTitle: 'Stored KWS API key (click to modify)'
+      });
+    }
+  });
+
+  // Enhanced location discovery event handlers
+  document.getElementById('findNearbyBusinesses')?.addEventListener('click', onFindNearbyBusinesses);
+  document.getElementById('locationSearch')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') onFindNearbyBusinesses();
+  });
+
   document.getElementById('template')?.addEventListener('input', (e) => {
     state.template = e.target.value;
   });
@@ -1627,6 +2245,10 @@ let googleLoading = null;
  * race conditions when multiple components need Places API access.
  */
 function loadGooglePlaces(apiKey) {
+  if (!String(apiKey || '').trim()) {
+    return Promise.reject(new Error('Google API key is required to load Google Places.'));
+  }
+
   // Return immediately if API is already loaded
   if (window.google?.maps?.places) return Promise.resolve();
 
@@ -1637,10 +2259,18 @@ function loadGooglePlaces(apiKey) {
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&v=weekly`;
     script.async = true;
-    script.onerror = () => reject(new Error('Failed to load Google Maps JS'));
+    script.onerror = () => {
+      googleLoading = null;
+      reject(new Error('Failed to load Google Maps JS'));
+    };
     script.onload = () => {
-      if (window.google?.maps?.places) resolve();
-      else reject(new Error('Google Places not available'));
+      if (window.google?.maps?.places) {
+        resolve();
+        googleLoading = null;
+      } else {
+        googleLoading = null;
+        reject(new Error('Google Places not available'));
+      }
     };
     document.head.appendChild(script);
   });
@@ -1677,7 +2307,12 @@ function loadGooglePlaces(apiKey) {
  * and reduces setup time for new locations.
  */
 function deriveCIDFromLocation(location) {
-  return loadGooglePlaces(GOOGLE_API_KEY)
+  const apiKey = getGoogleApiKey();
+  if (!apiKey) {
+    return Promise.reject(new Error('Google API key is not configured.'));
+  }
+
+  return loadGooglePlaces(apiKey)
     .then(() => {
       if (!window.google?.maps?.places) throw new Error('Google Places not loaded');
 
@@ -1925,6 +2560,367 @@ function downloadUrls(format) {
   }
 }
 
+// Enhanced API Event Handlers
+
+/**
+ * Handles saving Keywords Everywhere API key
+ */
+function onKwsSaveKey() {
+  const input = document.getElementById('kwsApiKeyInput');
+  const key = input?.value.trim();
+
+  if (!key) {
+    flash('Enter a KWS API key before saving.', 'warning');
+    return;
+  }
+
+  saveKwsApiKey(key)
+    .then(() => {
+      kwsApiKey = key;
+      const maskResult = applyMaskedKeyToInput(input, {
+        storedValue: key,
+        defaultValue: DEFAULT_KWS_API_KEY,
+        placeholderWhenDefault: 'Your Keywords Everywhere API key',
+        placeholderWhenEmpty: 'Your Keywords Everywhere API key',
+        maskedTitle: 'Stored KWS API key (click to modify)'
+      });
+      console.info('[MaskCheck] KWS API input state:', maskResult.state);
+      let statusMessage = 'KWS API key saved successfully';
+      let tone = 'success';
+
+      if (maskResult.state === 'masked') {
+        statusMessage = 'KWS API key saved securely (mask verified).';
+        tone = 'success';
+      } else if (maskResult.state === 'default') {
+        statusMessage = 'KWS API key stored for this browser.';
+        tone = 'success';
+      } else if (maskResult.state === 'missing-input') {
+        statusMessage = 'KWS API key saved but input field missing in DOM.';
+        tone = 'warning';
+      }
+
+      updateKwsApiStatus(statusMessage, tone);
+      flash('KWS API key saved');
+    })
+    .catch(() => {
+      updateKwsApiStatus('Unable to save KWS API key', 'error');
+      flash('Failed to save KWS API key', 'error');
+    });
+}
+
+/**
+ * Handles clearing Keywords Everywhere API key
+ */
+function onKwsClearKey() {
+  clearKwsApiKey()
+    .then(() => {
+      const input = document.getElementById('kwsApiKeyInput');
+      const maskResult = applyMaskedKeyToInput(input, {
+        storedValue: '',
+        defaultValue: DEFAULT_KWS_API_KEY,
+        placeholderWhenDefault: 'Your Keywords Everywhere API key',
+        placeholderWhenEmpty: 'Your Keywords Everywhere API key'
+      });
+      console.info('[MaskCheck] KWS API input state after clear:', maskResult.state);
+      updateKwsApiStatus('KWS API key cleared', 'warning');
+      flash('KWS API key cleared', 'warning');
+    })
+    .catch(() => {
+      updateKwsApiStatus('Unable to clear KWS API key', 'error');
+      flash('Failed to clear KWS API key', 'error');
+    });
+}
+
+/**
+ * Handles enriching keywords with search volume, CPC, and competition data
+ */
+async function onEnrichKeywords() {
+  try {
+    // Collect unique keywords from the OriginalSearch column (case-insensitive)
+    const seen = new Set();
+    const keywords = [];
+    state.rows.forEach(row => {
+      const raw = String(row?.OriginalSearch ?? '').trim();
+      if (!raw) return;
+      const normalized = raw.toLowerCase();
+      if (seen.has(normalized)) return;
+      seen.add(normalized);
+      keywords.push(raw);
+    });
+
+    if (keywords.length === 0) {
+      flash('No keywords found to enrich. Add some keywords first.', 'warning');
+      return;
+    }
+
+    const limitedKeywords = keywords.slice(0, 100); // API limit
+
+    updateKwsApiStatus(`Enriching ${limitedKeywords.length} keywords...`);
+    flash(`Enriching ${limitedKeywords.length} keywords with market data...`);
+
+    const data = await enrichKeywordsWithData(limitedKeywords);
+
+    // Add new columns for keyword data if they don't exist
+    addKeywordDataColumns();
+
+    // Update rows with enriched data
+    updateRowsWithKeywordData(data);
+
+    renderAll();
+    flash(`Successfully enriched ${limitedKeywords.length} keywords!`);
+
+  } catch (error) {
+    console.error('Keyword enrichment failed:', error);
+    updateKwsApiStatus('Keyword enrichment failed');
+    flash('Failed to enrich keywords: ' + error.message, 'error');
+  }
+}
+
+/**
+ * Handles finding related keywords
+ */
+async function onFindRelatedKeywords() {
+  try {
+    const textarea = document.getElementById('impKws');
+    const keywords = textarea?.value.split('\n').filter(k => k.trim()).slice(0, 5); // Limit to first 5 for API costs
+
+    if (!keywords || keywords.length === 0) {
+      flash('Enter some base keywords to find related terms.', 'warning');
+      return;
+    }
+
+    updateKwsApiStatus('Finding related keywords...');
+    flash('Discovering related keywords...');
+
+    let allRelated = [];
+    for (const keyword of keywords) {
+      try {
+        const relatedData = await getRelatedKeywords(keyword.trim());
+        if (relatedData?.data) {
+          allRelated = allRelated.concat(relatedData.data.map(item => item.keyword || item));
+        }
+      } catch (err) {
+        console.warn(`Failed to get related keywords for "${keyword}":`, err);
+      }
+    }
+
+    if (allRelated.length > 0) {
+      // Add unique related keywords to the textarea
+      const existingKeywords = new Set(keywords.map(k => k.toLowerCase()));
+      const newKeywords = allRelated.filter(k => !existingKeywords.has(k.toLowerCase()));
+
+      if (newKeywords.length > 0) {
+        const updatedText = keywords.concat(newKeywords.slice(0, 20)).join('\n'); // Limit additions
+        textarea.value = updatedText;
+        updateKeywordCount();
+        flash(`Added ${newKeywords.length} related keywords!`);
+      } else {
+        flash('No new related keywords found.', 'warning');
+      }
+    } else {
+      flash('No related keywords found.', 'warning');
+    }
+
+    updateKwsApiStatus('Related keywords search completed');
+
+  } catch (error) {
+    console.error('Related keywords search failed:', error);
+    updateKwsApiStatus('Related keywords search failed');
+    flash('Failed to find related keywords: ' + error.message, 'error');
+  }
+}
+
+/**
+ * Handles finding nearby businesses using Google Places API
+ */
+async function onFindNearbyBusinesses() {
+  try {
+    const searchInput = document.getElementById('locationSearch');
+    const radiusSelect = document.getElementById('radiusSelect');
+    const typeSelect = document.getElementById('businessTypeSelect');
+
+    const query = searchInput?.value.trim();
+    const radius = radiusSelect?.value || '5000';
+    const type = typeSelect?.value || '';
+
+    if (!query) {
+      flash('Enter a location or business to search for.', 'warning');
+      updateMapsApiStatus('Provide a location or business before running the nearby search.', 'warning');
+      return;
+    }
+
+    updateMapsApiStatus(`Searching for "${query}" within ${Math.round(Number(radius) / 1000)}km...`);
+    flash('Searching for nearby businesses...');
+    console.log('Starting nearby business search for:', query);
+
+    const apiKey = getGoogleApiKey();
+    console.log('Using Google API key:', apiKey ? 'Key available' : 'No key');
+
+    if (!apiKey) {
+      flash('Google API key is required to search nearby businesses.', 'error');
+      updateMapsApiStatus('Save a Google API key with Places access to run nearby searches.', 'error');
+      return;
+    }
+
+    // Load Google Places API
+    try {
+      await loadGooglePlaces(apiKey);
+      console.log('Google Places API loaded successfully');
+      updateMapsApiStatus('Google Places API loaded. Retrieving businesses...');
+    } catch (loadError) {
+      console.error('Failed to load Google Places API:', loadError);
+      flash('Failed to load Google Maps API: ' + loadError.message, 'error');
+      updateMapsApiStatus('Unable to load Google Places API. Confirm the key is valid and has Places access.', 'error');
+      return;
+    }
+
+    // Check if Google Places API is available
+    if (!window.google?.maps?.places) {
+      console.error('Google Places API not available after loading');
+      flash('Google Places API not available. Please check your API key.', 'error');
+      updateMapsApiStatus('Google Places API unavailable after loading. Check API key quotas and billing.', 'error');
+      return;
+    }
+
+    // Perform text search
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+    console.log('Created Places service, performing search...');
+
+    const searchResults = await performNearbySearch(service, query, radius, type);
+    console.log('Search results:', searchResults);
+
+    if (searchResults.length > 0) {
+      displayBusinessResults(searchResults);
+      flash(`Found ${searchResults.length} nearby businesses!`);
+      updateMapsApiStatus(`Found ${searchResults.length} businesses for "${query}".`, 'success');
+    } else {
+      flash('No businesses found in the specified area.', 'warning');
+      updateMapsApiStatus(`No businesses found for "${query}". Try expanding the radius or changing the type.`, 'warning');
+    }
+
+  } catch (error) {
+    console.error('Nearby business search failed:', error);
+    flash('Failed to find nearby businesses: ' + error.message, 'error');
+    updateMapsApiStatus(`Nearby search failed: ${error.message}`, 'error');
+  }
+}
+
+/**
+ * Adds keyword data columns if they don't exist
+ */
+function addKeywordDataColumns() {
+  const columnNames = state.columns.map(col => col.name);
+
+  const newColumns = [
+    { name: 'SearchVolume', label: 'Search Volume', kind: 'computed', formula: 'SearchVolume' },
+    { name: 'CPC', label: 'CPC ($)', kind: 'computed', formula: 'CPC' },
+    { name: 'Competition', label: 'Competition', kind: 'computed', formula: 'Competition' }
+  ];
+
+  newColumns.forEach(col => {
+    if (!columnNames.includes(col.name)) {
+      state.columns.push(col);
+    }
+  });
+}
+
+/**
+ * Updates rows with enriched keyword data
+ */
+function updateRowsWithKeywordData(apiData) {
+  if (!apiData?.data?.length) return;
+
+  const keywordDataMap = new Map();
+  apiData.data.forEach(item => {
+    const rawKeyword = String(item?.keyword ?? '').trim();
+    if (!rawKeyword) return;
+    const normalized = rawKeyword.toLowerCase();
+    keywordDataMap.set(normalized, {
+      volume: item.vol ?? 0,
+      cpc: item.cpc?.value ?? 0,
+      competition: item.competition ?? 'N/A'
+    });
+  });
+
+  if (!keywordDataMap.size) return;
+
+  // Update existing rows with keyword data
+  state.rows.forEach(row => {
+    const rawKeyword = String(row?.OriginalSearch ?? '').trim();
+    if (!rawKeyword) return;
+    const data = keywordDataMap.get(rawKeyword.toLowerCase());
+    if (!data) return;
+
+    row.SearchVolume = data.volume;
+    row.CPC = data.cpc;
+    row.Competition = data.competition;
+  });
+}
+
+/**
+ * Performs nearby business search using Google Places API
+ */
+function performNearbySearch(service, query, radius, type) {
+  return new Promise((resolve, reject) => {
+    try {
+      const request = {
+        query: query,
+        fields: ['name', 'place_id', 'formatted_address', 'geometry', 'types']
+      };
+      if (type) request.type = type;
+
+      console.log('Places API request:', request);
+
+      service.textSearch(request, (results, status) => {
+        console.log('Places API response status:', status);
+        console.log('Places API results:', results);
+
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          resolve(results.slice(0, 10)); // Limit to 10 results
+        } else if (status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+          resolve([]); // No results found, but not an error
+        } else {
+          const errorMessages = {
+            'INVALID_REQUEST': 'Invalid search request',
+            'OVER_QUERY_LIMIT': 'Query limit exceeded',
+            'REQUEST_DENIED': 'Request denied - check API key permissions',
+            'UNKNOWN_ERROR': 'Unknown error occurred'
+          };
+          const errorMessage = errorMessages[status] || `Places search failed: ${status}`;
+          console.error('Places API error:', errorMessage);
+          reject(new Error(errorMessage));
+        }
+      });
+    } catch (error) {
+      console.error('Error setting up Places search:', error);
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Displays business search results in a modal or new section
+ */
+function displayBusinessResults(businesses) {
+  // For now, we'll add them to the keyword list as location-based searches
+  const textarea = document.getElementById('impKws');
+  if (!textarea) return;
+
+  const locationKeywords = businesses.map(business => {
+    const name = business.name || '';
+    const address = business.formatted_address || '';
+    return `${name} ${address}`.trim();
+  });
+
+  const existingContent = textarea.value.trim();
+  const newContent = existingContent ?
+    existingContent + '\n' + locationKeywords.join('\n') :
+    locationKeywords.join('\n');
+
+  textarea.value = newContent;
+  updateKeywordCount();
+}
+
 // Initialize Application
 
 /**
@@ -1948,9 +2944,13 @@ function downloadUrls(format) {
  * into a fully functional CID generator application.
  */
 function initApp() {
+  purgeServiceWorkers();
+  recordAppVersionStamp();
   loadAll();
   ensureDefaults();
   bindEvents();
+  initializeApiKeySettings();
+  initializeKwsApiSettings();
   renderAll();
 }
 
@@ -2039,5 +3039,11 @@ function initializeDropdowns() {
   });
 }
 
-// Start the application
-document.addEventListener('DOMContentLoaded', initApp);
+// Initialize app when DOM is ready, unless modern version is already loaded
+document.addEventListener('DOMContentLoaded', () => {
+  if (!window.cidApp) {
+    initApp();
+  } else {
+    console.log('Modern CID app already initialized, skipping legacy init');
+  }
+});

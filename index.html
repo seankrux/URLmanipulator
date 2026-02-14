@@ -33,13 +33,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Generate CID-based Google Search URLs for local SEO and location targeting" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
 
     <!-- Page title optimized for SEO and clarity -->
     <title>CID Generator Tool - Local SEO URL Builder</title>
 
     <!-- Stylesheet loading with performance optimization -->
-    <link rel="stylesheet" href="style.css" />
-    <link rel="preload" href="style.css" as="style" />
+    <link rel="stylesheet" href="style.css?v=v2024-09-18" />
+    <link rel="preload" href="style.css?v=v2024-09-18" as="style" />
   </head>
   <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -76,10 +79,6 @@
               <input id="impCidLoc" aria-describedby="loc-cid-help" placeholder="e.g. 12673312613543755776" pattern="\d{10,20}" required />
               <div class="sr-only" id="loc-cid-help">Geographic location identifier for targeting specific areas</div>
             </label>
-            <label class="lbl" for="impLocation">Location Name
-              <input id="impLocation" aria-describedby="location-help" placeholder="e.g. Chicago, IL" />
-              <div class="sr-only" id="location-help">Human-readable location name for reference</div>
-            </label>
           </div>
           <div class="row">
             <label class="lbl keyword-input" for="impKws">Search Keywords (one per line)
@@ -98,6 +97,87 @@
             <button id="impInsert" class="primary large" aria-describedby="generate-help">Generate CID URLs</button>
             <div class="sr-only" id="mode-help">Choose whether to add to existing data or replace it entirely</div>
             <div class="sr-only" id="generate-help">Creates URLs using the provided keywords and CID information</div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Google Places API</h3>
+          <p class="help-text">Optional key used for automatic CID lookup. Stored only in this browser profile.</p>
+          <div class="row">
+            <label class="lbl" for="apiKeyInput">API Key
+              <input id="apiKeyInput" type="password" autocomplete="off" placeholder="Paste your key (optional)" />
+            </label>
+          </div>
+          <div class="row action-row">
+            <button id="apiKeySave" class="primary">Save Key</button>
+            <button id="apiKeyClear" class="secondary">Clear Key</button>
+            <span id="apiKeyStatus" class="tiny status-indicator status-warning" role="status" aria-live="polite">No key saved.</span>
+          </div>
+        </div>
+
+        <!-- Keywords Everywhere API Panel -->
+        <div class="form-section">
+          <h3>Keywords Everywhere API</h3>
+          <p class="help-text">Enrich keywords with search volume, CPC, and competition data. Uses credit-based pricing.</p>
+          <div class="row">
+            <label class="lbl" for="kwsApiKeyInput">KWS API Key
+              <input id="kwsApiKeyInput" type="password" autocomplete="off" placeholder="Your Keywords Everywhere API key" />
+            </label>
+          </div>
+          <div class="row action-row">
+            <button id="kwsSaveKey" class="primary">Save KWS Key</button>
+            <button id="kwsClearKey" class="secondary">Clear</button>
+            <span id="kwsApiStatus" class="tiny status-indicator status-success" role="status" aria-live="polite">KWS API ready</span>
+          </div>
+          <div class="row">
+            <button id="enrichKeywords" class="primary" title="Add search volume, CPC, and competition data">
+              📊 Enrich Keywords with Data
+            </button>
+            <button id="findRelatedKeywords" class="secondary" title="Find related keywords for expansion">
+              🔍 Find Related Keywords
+            </button>
+          </div>
+          <div class="row">
+            <span class="help-text">💡 Enrich up to 100 keywords at once with market intelligence data</span>
+          </div>
+        </div>
+
+        <!-- Enhanced Location Discovery -->
+        <div class="form-section">
+          <h3>Enhanced Location Discovery</h3>
+          <p class="help-text">Advanced Google Maps integration for comprehensive location and business discovery.</p>
+          <div class="row">
+            <label class="lbl" for="locationSearch">Search Location/Business
+              <input id="locationSearch" placeholder="e.g., restaurants in Chicago, dentist near me" />
+            </label>
+            <button id="findNearbyBusinesses" class="primary" title="Find businesses in the area">
+              🏪 Find Nearby Businesses
+            </button>
+          </div>
+          <div class="row small">
+            <span id="mapsApiStatus" class="tiny status-indicator status-warning" role="status" aria-live="polite">Maps API not tested yet.</span>
+          </div>
+          <div class="row">
+            <label class="lbl" for="radiusSelect">Search Radius</label>
+            <select id="radiusSelect">
+              <option value="1000">1 km</option>
+              <option value="5000" selected>5 km</option>
+              <option value="10000">10 km</option>
+              <option value="25000">25 km</option>
+            </select>
+            <label class="lbl" for="businessTypeSelect">Business Type</label>
+            <select id="businessTypeSelect">
+              <option value="">All Types</option>
+              <option value="restaurant">Restaurants</option>
+              <option value="store">Retail Stores</option>
+              <option value="hospital">Healthcare</option>
+              <option value="school">Education</option>
+              <option value="gym">Fitness</option>
+              <option value="beauty_salon">Beauty & Wellness</option>
+            </select>
+          </div>
+          <div class="row">
+            <span class="help-text">🎯 Discover competitors and generate location-specific URL campaigns</span>
           </div>
         </div>
 
@@ -205,6 +285,37 @@
       <small>🔒 Client-only app. All data stored locally in your browser.</small>
     </footer>
 
-    <script type="module" src="app.js"></script>
+    <script>
+      (function loadAppWithCacheBust() {
+        const version = 'v2024-09-26';
+        window.APP_CACHE_VERSION = version;
+        const isLocalHost = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+        const cacheToken = isLocalHost ? `${version}-${Date.now()}` : version;
+
+        // Load optimized modules first (non-blocking)
+        const optimizedModules = [
+          'optimized-state-management.js',
+          'optimized-formula-engine.js',
+          'optimized-async-patterns.js',
+          'performance-optimizations.js',
+          'modern-js-integration.js'
+        ];
+
+        optimizedModules.forEach(module => {
+          const script = document.createElement('script');
+          script.src = `${module}?v=${encodeURIComponent(cacheToken)}`;
+          script.dataset.version = version;
+          document.head.appendChild(script);
+        });
+
+        // Load main app after a small delay to ensure dependencies are available
+        setTimeout(() => {
+          const script = document.createElement('script');
+          script.src = `app.js?v=${encodeURIComponent(cacheToken)}`;
+          script.dataset.version = version;
+          document.head.appendChild(script);
+        }, 100);
+      })();
+    </script>
   </body>
 </html>
